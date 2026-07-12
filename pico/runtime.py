@@ -68,7 +68,9 @@ class Pico:
         secret_env_names=None,
         feature_flags=None,
         allowed_tools=None,
+        persona="coder",
     ):
+        self.persona = persona
         self.model_client = model_client
         self.workspace = workspace
         self.root = Path(workspace.repo_root)
@@ -113,6 +115,8 @@ class Pico:
         self.last_durable_promotions = []
         self.last_durable_rejections = []
         self.last_durable_superseded = []
+        # TODO[C]: 兰凯崴 — 实例化 AuditSink，在 emit_trace 中转发审计日志
+        self._audit_sink = None
         self._last_tool_result_metadata = {}
         self._last_prefix_refresh = {
             "workspace_changed": False,
@@ -138,9 +142,11 @@ class Pico:
             self.session["checkpoints"] = checkpoints
         checkpoints.setdefault("current_id", "")
         checkpoints.setdefault("items", {})
+        # TODO[A]: 钟俊 — runtime_identity 加 persona 字段，resume 时检测 persona drift
         runtime_identity = self.session.setdefault("runtime_identity", {})
         if not isinstance(runtime_identity, dict):
             self.session["runtime_identity"] = {}
+        runtime_identity.setdefault("persona", self.persona)
         resume_state = self.session.setdefault("resume_state", {})
         if not isinstance(resume_state, dict):
             self.session["resume_state"] = {}
@@ -175,6 +181,10 @@ class Pico:
         del bucket[:-limit]
 
     def build_tools(self):
+        # TODO[B]: 徐国洪 — 当 persona="ta" 时，合并 TA 工具集：
+        #   base_tools = toolkit.build_tool_registry(self.tool_context())
+        #   ta_tools = ta.tools.build_ta_tool_registry(self.tool_context())
+        #   return {**base_tools, **ta_tools}
         return toolkit.build_tool_registry(self.tool_context())
 
     @staticmethod
@@ -204,7 +214,8 @@ class Pico:
         return tool_signature(self.tools)
 
     def build_prefix(self):
-        return build_prompt_prefix(workspace=self.workspace, tools=self.tools)
+        # TODO[A]: 钟俊 — 将 persona 参数传给 build_prompt_prefix
+        return build_prompt_prefix(workspace=self.workspace, tools=self.tools, persona=self.persona)
 
     def _apply_prefix_state(self, prefix_state):
         self.prefix_state = prefix_state
@@ -341,8 +352,11 @@ class Pico:
         payload = self.redact_artifact(payload or {})
         payload["event"] = event
         payload["created_at"] = now()
-        # trace 是运行中的逐事件时间线，适合回答“这一轮 agent 到底做了什么”。
+        # trace 是运行中的逐事件时间线，适合回答"这一轮 agent 到底做了什么"。
         self.run_store.append_trace(task_state, payload)
+        # TODO[C]: 兰凯崴 — 将 trace 转发一份到 audit sink
+        # if self._audit_sink:
+        #     self._audit_sink.emit(event, payload, intern_id=self._intern_id())
         return payload
 
     def capture_workspace_snapshot(self):
@@ -502,7 +516,10 @@ class Pico:
     def ask(self, user_message):
         from .agent_loop import AgentLoop
 
-        return AgentLoop(self).run(user_message)
+        final = AgentLoop(self).run(user_message)
+        # TODO[C]: 兰凯崴 — 在 loop 结束后（write_report 之前）触发 post-hook 校验
+        # self.validate_and_maybe_escalate(final)
+        return final
 
     def execute_tool(self, name, args):
         result = self.tool_executor.execute(name, args)
@@ -550,6 +567,8 @@ class Pico:
     def build_report(self, task_state):
         # report 是一次运行的最终摘要；
         # 和 trace 的区别在于，trace 关注过程，report 关注结果与关键指标。
+        # TODO[C]: 兰凯崴 — 在 report 中增加 escalation 状态
+        escalation_status = getattr(self, "_last_escalation_status", "none")
         return {
             "run_id": task_state.run_id,
             "task_id": task_state.task_id,
@@ -566,6 +585,8 @@ class Pico:
             "durable_rejections": list(self.last_durable_rejections),
             "durable_superseded": list(self.last_durable_superseded),
             "redacted_env": self.detected_secret_env_summary(),
+            "persona": self.persona,
+            "escalation_status": escalation_status,
         }
 
     def tool_example(self, name):
@@ -632,6 +653,7 @@ class Pico:
         if self.read_only:
             return False
         if self.approval_policy == "auto":
+            # TODO[C]: 兰凯崴 — 当是"升级"操作时，写入 escalation trace 不阻断
             return True
         if self.approval_policy == "never":
             return False
@@ -640,6 +662,26 @@ class Pico:
         except EOFError:
             return False
         return answer.strip().lower() in {"y", "yes"}
+
+    # TODO[C]: 兰凯崴 — 实现 validate_and_maybe_escalate post-hook
+    # 在 agent_loop.py 的 write_report 前调用。
+    # 不放 agent_loop 内部，而是作为 Pico 的 post-hook 方法，
+    # 在 agent_loop.run() 末尾（write_report 之前）调用。
+    def validate_and_maybe_escalate(self, final_answer: str) -> dict:
+        """校验 final answer 中的 risk 五元组，必要时触发升级。
+
+        这个函数是"输出约束"的强制点。它不阻断 loop（loop 已经结束了），
+        而是影响当前 run 的状态：如果校验不通过，置 NEED_REVIEW 状态，
+        写一条 escalation trace，让外层 driver 或下一个人工环节处理。
+
+        Args:
+            final_answer: agent 返回的最终答案
+
+        Returns:
+            {"status": "ok" | "NEED_REVIEW", "risks": [...], "escalated": bool}
+        """
+        # TODO[C]: 实现五元组校验和升级逻辑
+        return {"status": "ok", "risks": [], "escalated": False}
 
     @staticmethod
     def parse(raw):

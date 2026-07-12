@@ -68,9 +68,17 @@ class ContextManager:
     ):
         self.agent = agent
         self.total_budget = int(total_budget)
+        # TODO[A]: 钟俊 — 当 agent.persona == "ta" 时，使用 SECTION_WEIGHTS_TA
+        # 覆盖默认的 section_budgets 和 section_floors，让 project_state 段获得更高预算。
         self.section_budgets = dict(DEFAULT_SECTION_BUDGETS)
         if section_budgets:
             self.section_budgets.update({str(key): int(value) for key, value in section_budgets.items()})
+        # TA 场景下上下文预算重分配
+        if hasattr(agent, "persona") and agent.persona == "ta":
+            from .ta.persona import SECTION_WEIGHTS_TA, SECTION_FLOORS_TA
+            self.section_budgets.update(SECTION_WEIGHTS_TA)
+            if section_floors is None:
+                section_floors = SECTION_FLOORS_TA
         self._section_floor_overrides = {str(key): int(value) for key, value in (section_floors or {}).items()}
         self.section_floors = self._compute_section_floors()
         self.reduction_order = tuple(reduction_order or DEFAULT_REDUCTION_ORDER)

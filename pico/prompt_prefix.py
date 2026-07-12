@@ -7,6 +7,10 @@ from dataclasses import dataclass
 
 from .workspace import now
 
+# TODO[A]: 钟俊 — 在 build_prompt_prefix 中增加 persona 参数，
+# 当 persona="ta" 时注入 TA_PREFIX 替换默认的 "You are pico..." 人设。
+# 提示：不要修改函数签名中的默认值，保持向后兼容。
+
 
 @dataclass
 class PromptPrefix:
@@ -34,7 +38,9 @@ def tool_signature(tools):
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
 
 
-def build_prompt_prefix(workspace, tools, built_at=None):
+def build_prompt_prefix(workspace, tools, built_at=None, persona="coder"):
+    # TODO[A]: 当 persona="ta" 时，从 pico.ta.persona 导入 TA_PREFIX 并替换
+    # 默认的 "You are pico..." 人设文本，同时调整工具示例为 TA 场景。
     tool_lines = []
     for name, tool in tools.items():
         fields = ", ".join(f"{key}: {value}" for key, value in tool["schema"].items())
@@ -53,6 +59,12 @@ def build_prompt_prefix(workspace, tools, built_at=None):
     )
     # prefix 可以理解成 agent 的“工作手册”：
     # 它是谁、工具怎么调用、当前仓库是什么状态，都写在这里。
+    # TODO[A]: 钟俊 — 将以下系统身份替换为 persona 分支：
+    #   if persona == "ta":
+    #       from pico.ta.persona import TA_PREFIX
+    #       system_identity = TA_PREFIX
+    #   else:
+    #       system_identity = "You are pico, a small local coding agent working inside a local repository."
     text = textwrap.dedent(
         f"""\
         You are pico, a small local coding agent working inside a local repository.

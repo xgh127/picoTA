@@ -224,7 +224,7 @@ def build_agent(args):
     为什么存在：
     命令行参数只是字符串和开关，runtime 需要的是已经装配好的对象图：
     model client、workspace snapshot、session store、secret 配置等。
-    这个函数负责把“启动参数”翻译成“agent 运行现场”。
+    这个函数负责把"启动参数"翻译成"agent 运行现场"。
 
     输入 / 输出：
     - 输入：`argparse` 解析后的 `args`
@@ -244,17 +244,29 @@ def build_agent(args):
     session_id = args.resume
     if session_id == "latest":
         session_id = store.latest()
+    # TODO[A]: 钟俊 — 将 persona 参数传递给 Pico，使其能按 persona 选前缀和工具集
+    persona = getattr(args, "persona", "coder")
+    pico_kwargs = dict(
+        approval_policy=args.approval,
+        max_steps=args.max_steps,
+        max_new_tokens=args.max_new_tokens,
+        secret_env_names=configured_secret_names,
+        persona=persona,
+    )
     if session_id:
         return Pico.from_session(
             model_client=model,
             workspace=workspace,
             session_store=store,
             session_id=session_id,
-            approval_policy=args.approval,
-            max_steps=args.max_steps,
-            max_new_tokens=args.max_new_tokens,
-            secret_env_names=configured_secret_names,
+            **pico_kwargs,
         )
+    return Pico(
+        model_client=model,
+        workspace=workspace,
+        session_store=store,
+        **pico_kwargs,
+    )
     return Pico(
         model_client=model,
         workspace=workspace,
@@ -273,6 +285,9 @@ def build_arg_parser():
     )
     parser.add_argument("prompt", nargs="*", help="Optional one-shot prompt.")
     parser.add_argument("--cwd", default=".", help="Workspace directory.")
+    # TODO[A]: 钟俊 — 添加 --persona 参数支持 TA 模式
+    # 使用方式: pico --persona ta
+    parser.add_argument("--persona", choices=("coder", "ta"), default="coder", help="Agent persona: coder (default) or ta (teaching assistant).")
     parser.add_argument(
         "--provider",
         choices=PROVIDER_CHOICES,

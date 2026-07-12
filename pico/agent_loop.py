@@ -204,6 +204,8 @@ class AgentLoop:
                     "run_duration_ms": int((time.monotonic() - run_started_at) * 1000),
                 },
             )
+            # TODO[C]: 兰凯崴 — 在 write_report 前触发 post-hook 校验
+            # agent.validate_and_maybe_escalate(final)
             agent.run_store.write_report(task_state, agent.redact_artifact(agent.build_report(task_state)))
             return final
 
@@ -235,5 +237,7 @@ class AgentLoop:
                 "run_duration_ms": int((time.monotonic() - run_started_at) * 1000),
             },
         )
+        # TODO[C]: 兰凯崴 — 在 write_report 前触发 post-hook 校验
+        # agent.validate_and_maybe_escalate(final)
         agent.run_store.write_report(task_state, agent.redact_artifact(agent.build_report(task_state)))
         return final
