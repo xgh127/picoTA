@@ -20,6 +20,10 @@ DAY1_REPORT = """# 实习生日报 - 第1天
 ## 阻塞
 - 无
 
+## 证据/产物
+- README 配置说明已更新
+- 本地环境截图已保存
+
 ## 次日计划
 - 开始实现第一个功能模块
 """
@@ -33,6 +37,10 @@ DAY2_REPORT = """# 实习生日报 - 第2天
 
 ## 阻塞
 - 数据库连接配置有问题，需要导师协助
+
+## 证据/产物
+- 数据库模型设计文档
+- API 接口草稿文件
 
 ## 次日计划
 - 完成认证模块开发
@@ -49,6 +57,10 @@ DAY3_REPORT = """# 实习生日报 - 第3天
 ## 阻塞
 - 代码审查等待中
 - 测试覆盖率未达到 80%
+
+## 证据/产物
+- PR #3 已提交
+- 单元测试结果显示覆盖率未达到 80%
 
 ## 次日计划
 - 补充测试用例
@@ -96,13 +108,19 @@ ORACLE_RISKS = {
 # ── 项目看板状态 ────────────────────────────────────────────────────────────
 SAMPLE_BOARD = {
     "milestones": [
-        {"name": "M1: 环境搭建", "status": "completed", "completion_date": "Day 1"},
-        {"name": "M2: 核心模块开发", "status": "in_progress", "target_date": "Day 5"},
-        {"name": "M3: 测试与联调", "status": "pending", "target_date": "Day 7"},
+        {"id": "M1", "name": "M1: 环境搭建", "weight": 0.2, "status": "completed", "progress": 1.0, "completion_date": "Day 1", "due_day": 1},
+        {"id": "M2", "name": "M2: 核心模块开发", "weight": 0.5, "status": "in_progress", "progress": 0.6, "target_date": "Day 5", "due_day": 5},
+        {"id": "M3", "name": "M3: 测试与联调", "weight": 0.3, "status": "pending", "progress": 0.0, "target_date": "Day 7", "due_day": 7},
     ],
     "tasks": [
         {"id": "T1", "description": "用户认证模块", "assignee": "intern", "status": "in_progress"},
         {"id": "T2", "description": "数据库模型设计", "assignee": "intern", "status": "completed"},
         {"id": "T3", "description": "API 接口开发", "assignee": "intern", "status": "in_progress"},
     ],
+    "expected_completion": 0.45,
+    "current_day": 3,
+    "mentor_sync": {
+        "days_since_last_sync": 3,
+        "actual_reminders": 2,
+    },
 }

@@ -1,0 +1,22 @@
+{
+  "case": "case_baseline",
+  "description": "W1 基线复现正常推进，用于验证高质量日报/周报应得到较高分。",
+  "project_plan": "../project_plan.json",
+  "purpose": "正常样本：结构、证据、清晰度高；不应触发导师升级。",
+  "expected_metrics": {
+    "daily": {
+      "report_completeness_min": 0.95,
+      "evidence_coverage_min": 0.9,
+      "clarity_coherence_min": 0.7
+    },
+    "weekly": {
+      "milestone_completion_range": [
+        0.07,
+        0.09
+      ],
+      "mentor_sync_status": "OK",
+      "mentor_sync_timeliness": 1.0
+    }
+  },
+  "expected_risks": []
+}

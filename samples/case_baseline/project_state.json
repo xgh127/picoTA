@@ -1,0 +1,88 @@
+{
+  "current_day": 3,
+  "current_week": 1,
+  "expected_completion": 0.08,
+  "mentor_sync": {
+    "days_since_last_sync": 1,
+    "actual_reminders": 0,
+    "last_sync_date": "2026-07-13"
+  },
+  "milestones": [
+    {
+      "id": "W1",
+      "name": "环境搭建与基线复现",
+      "weight": 0.1,
+      "due_day": 5,
+      "status": "in_progress",
+      "progress": 0.8
+    },
+    {
+      "id": "W2",
+      "name": "图谱抽取方案设计与选型验证",
+      "weight": 0.1,
+      "due_day": 10,
+      "status": "pending",
+      "progress": 0.0
+    },
+    {
+      "id": "W3",
+      "name": "G-T Pointer 映射机制实现",
+      "weight": 0.15,
+      "due_day": 15,
+      "status": "pending",
+      "progress": 0.0
+    },
+    {
+      "id": "W4",
+      "name": "图谱预激活与树剪枝算法实现",
+      "weight": 0.2,
+      "due_day": 20,
+      "status": "pending",
+      "progress": 0.0
+    },
+    {
+      "id": "W5",
+      "name": "算法调优与消融实验设计",
+      "weight": 0.15,
+      "due_day": 25,
+      "status": "pending",
+      "progress": 0.0
+    },
+    {
+      "id": "W6",
+      "name": "全面对比实验与指标采集",
+      "weight": 0.15,
+      "due_day": 30,
+      "status": "pending",
+      "progress": 0.0
+    },
+    {
+      "id": "W7",
+      "name": "问题排查、效果打磨与鲁棒性测试",
+      "weight": 0.1,
+      "due_day": 35,
+      "status": "pending",
+      "progress": 0.0
+    },
+    {
+      "id": "W8",
+      "name": "成果提炼与汇报材料产出",
+      "weight": 0.05,
+      "due_day": 40,
+      "status": "pending",
+      "progress": 0.0
+    }
+  ],
+  "tasks": [
+    {
+      "id": "T1",
+      "description": "补齐多文档问答集的 latency/token/calls 埋点",
+      "status": "in_progress"
+    },
+    {
+      "id": "T2",
+      "description": "整理 PageIndex 基线瓶颈分析表",
+      "status": "pending"
+    }
+  ]
+}

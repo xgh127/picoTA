@@ -1,0 +1,27 @@
+{
+  "case": "case_graph_blocked",
+  "description": "W2 图谱抽取粒度不稳定，连续阻塞并主动请求导师确认。",
+  "project_plan": "../project_plan.json",
+  "purpose": "阻塞样本：应识别连续阻塞、超过 2 天未同步、主动请求导师帮助，并触发 ESCALATE。",
+  "expected_metrics": {
+    "daily": {
+      "report_completeness_min": 0.95,
+      "evidence_coverage_min": 0.9,
+      "clarity_coherence_min": 0.65
+    },
+    "weekly": {
+      "milestone_completion_range": [
+        0.12,
+        0.14
+      ],
+      "mentor_sync_status": "ESCALATE",
+      "mentor_sync_timeliness_range": [
+        0.2,
+        0.4
+      ]
+    }
+  },
+  "expected_risks": [
+    "blocker"
+  ]
+}

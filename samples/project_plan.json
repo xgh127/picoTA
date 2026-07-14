@@ -1,0 +1,209 @@
+{
+  "project_title": "面向金融文档撰写 Agent 的非向量化知识库构建与可追溯检索能力升级",
+  "overall_goal": "在 PageIndex 的基础上引入图谱机制，构建图-树协同的 GGTP 检索方案，降低多文档和超长文档检索时延与 Token 成本，并提升跨文档多跳检索能力。",
+  "technical_route": [
+    "Graph Track：抽取文档库中的实体、概念及关系，形成轻量级语义图谱。",
+    "Tree Track：保留 PageIndex 的树状大纲结构和可追溯定位能力。",
+    "G-T Pointer：建立图谱实体节点到 PageIndex 树叶子节点的映射。",
+    "Query 流程：图谱预激活 -> 子图扩展 -> 树剪枝 -> 局部 PageIndex 推理。"
+  ],
+  "evaluation_metrics": [
+    "Latency：端到端检索响应时间。",
+    "Cost：LLM 调用次数和 Token 消耗。",
+    "Single-doc Accuracy：单文档定位 F1 / Accuracy。",
+    "Multi-hop Accuracy：跨文档复杂关联问题回答准确率。"
+  ],
+  "milestones": [
+    {
+      "id": "W1",
+      "week": 1,
+      "name": "环境搭建与基线复现",
+      "weight": 0.1,
+      "objective": "吃透 PageIndex 原始代码，建立可复现性能基线。",
+      "tasks": [
+        "跑通 PageIndex 现有 pipeline。",
+        "准备单文档长文、多文档知识库、多跳问答集。",
+        "埋点记录 LLM 调用次数、Token 消耗、端到端延迟、树遍历深度。"
+      ],
+      "deliverables": [
+        "基线性能报告",
+        "瓶颈分析表格",
+        "基线运行脚本"
+      ],
+      "acceptance": [
+        "单文档和多文档场景都能跑通。",
+        "至少记录 latency、token、LLM calls、tree depth 四类指标。"
+      ],
+      "difficulty": "medium",
+      "key_risks": [
+        "只跑通功能但没有量化基线，后续无法证明 GGTP 有效。"
+      ]
+    },
+    {
+      "id": "W2",
+      "week": 2,
+      "name": "图谱抽取方案设计与选型验证",
+      "weight": 0.1,
+      "objective": "确定宏观图轨道的技术路线，完成小规模图谱抽取验证。",
+      "tasks": [
+        "调研并试用 GBrain / Cognee 等图谱抽取工具。",
+        "设计实体抽取 Prompt 和流程。",
+        "在 3-5 个金融文档上跑通文档到实体图抽取。"
+      ],
+      "deliverables": [
+        "图谱抽取 Pipeline v0.1",
+        "图谱质量抽样评估报告"
+      ],
+      "acceptance": [
+        "能够从小规模金融文档中抽取实体和关系。",
+        "完成一次人工抽样质量检查。"
+      ],
+      "difficulty": "high",
+      "key_risks": [
+        "实体抽取粒度不稳定会影响后续剪枝可靠性。"
+      ]
+    },
+    {
+      "id": "W3",
+      "week": 3,
+      "name": "G-T Pointer 映射机制实现",
+      "weight": 0.15,
+      "objective": "打通图谱节点与 PageIndex 树叶子节点的软连接。",
+      "tasks": [
+        "设计实体 ID 到树节点 ID 的多对多映射结构。",
+        "实现抽取阶段记录实体出现原文位置并回填树叶子节点。",
+        "处理同一实体跨多个子树、多篇文档共现等边界情况。"
+      ],
+      "deliverables": [
+        "G-T Pointer 映射模块",
+        "映射单元测试"
+      ],
+      "acceptance": [
+        "给定实体能够定位到对应树节点集合。",
+        "能够处理多对多和跨文档共现情况。"
+      ],
+      "difficulty": "high",
+      "key_risks": [
+        "实体边界和节点边界不一致，导致指针召回不完整。"
+      ]
+    },
+    {
+      "id": "W4",
+      "week": 4,
+      "name": "图谱预激活与树剪枝算法实现",
+      "weight": 0.2,
+      "objective": "实现 Query -> 图谱激活 -> 子图召回 -> 树剪枝 -> 局部推理的完整链路。",
+      "tasks": [
+        "实现 Query 在图谱上的语义激活。",
+        "实现 1-2 跳邻域子图扩展。",
+        "实现子图到候选树节点集合的剪枝逻辑。"
+      ],
+      "deliverables": [
+        "GGTP 算法 v0.1",
+        "小规模测试集检索结果"
+      ],
+      "acceptance": [
+        "在 10-20 篇文档上跑通完整链路。",
+        "能够输出剪枝后的候选子树或叶子节点集合。"
+      ],
+      "difficulty": "very_high",
+      "key_risks": [
+        "剪枝过度导致漏检，剪枝不足导致收益不明显。"
+      ]
+    },
+    {
+      "id": "W5",
+      "week": 5,
+      "name": "算法调优与消融实验设计",
+      "weight": 0.15,
+      "objective": "调优剪枝参数，并设计 ablation study。",
+      "tasks": [
+        "调优子图扩展跳数、激活阈值、剪枝粒度。",
+        "设计剪枝失败兜底策略。",
+        "设计原 PageIndex、GGTP 无兜底、GGTP 完整版的对照矩阵。"
+      ],
+      "deliverables": [
+        "GGTP v1.0",
+        "消融实验设计文档"
+      ],
+      "acceptance": [
+        "明确每组实验的自变量、因变量和预期对比。"
+      ],
+      "difficulty": "high",
+      "key_risks": [
+        "没有兜底策略时，图谱召回错误会直接影响最终答案。"
+      ]
+    },
+    {
+      "id": "W6",
+      "week": 6,
+      "name": "全面对比实验与指标采集",
+      "weight": 0.15,
+      "objective": "跑完整实验矩阵，采集四大核心指标。",
+      "tasks": [
+        "跑基线、剪枝版、兜底版三组对照。",
+        "采集延迟、Token 消耗、LLM 调用次数。",
+        "测单文档准确率和多跳准确率。"
+      ],
+      "deliverables": [
+        "完整实验数据表",
+        "延迟对比曲线",
+        "准确率对比柱图"
+      ],
+      "acceptance": [
+        "完成 latency、cost、accuracy、multi-hop accuracy 四类指标采集。"
+      ],
+      "difficulty": "high",
+      "key_risks": [
+        "多跳准确率提升不明显，需要预留排查时间。"
+      ]
+    },
+    {
+      "id": "W7",
+      "week": 7,
+      "name": "问题排查、效果打磨与鲁棒性测试",
+      "weight": 0.1,
+      "objective": "处理实验暴露的问题，补充边界 case 和失败案例分析。",
+      "tasks": [
+        "排查图谱召回不足或剪枝漏检 case。",
+        "补充不同文档库规模下的性能曲线。",
+        "进行失败案例分析。"
+      ],
+      "deliverables": [
+        "最终版实验结果",
+        "失败案例分析报告"
+      ],
+      "acceptance": [
+        "说明主要失败原因来自图谱层还是树推理层。"
+      ],
+      "difficulty": "medium",
+      "key_risks": [
+        "鲁棒性曲线不足，难以支撑复杂度收益论证。"
+      ]
+    },
+    {
+      "id": "W8",
+      "week": 8,
+      "name": "成果提炼与汇报材料产出",
+      "weight": 0.05,
+      "objective": "形成可展示、可复现、可交接的成果物。",
+      "tasks": [
+        "撰写完整技术报告。",
+        "制作汇报 PPT。",
+        "整理代码和复现文档。"
+      ],
+      "deliverables": [
+        "技术报告",
+        "汇报 PPT",
+        "可复现代码仓库"
+      ],
+      "acceptance": [
+        "报告能说明方法、实验、结论和量化收益。"
+      ],
+      "difficulty": "medium",
+      "key_risks": [
+        "实验结果和汇报材料脱节，难以展示核心创新点。"
+      ]
+    }
+  ]
+}

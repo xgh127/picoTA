@@ -1,0 +1,28 @@
+{
+  "case": "case_mapping_delay",
+  "description": "W3 G-T Pointer 映射延期，证据不足和里程碑到期未完成，用于检验进度与导师提醒。",
+  "project_plan": "../project_plan.json",
+  "purpose": "延期样本：里程碑到期未完成、完成度低于预期、超过 2 天未同步，应触发导师同步。",
+  "expected_metrics": {
+    "daily": {
+      "report_completeness_min": 0.85,
+      "evidence_coverage_min": 0.6,
+      "clarity_coherence_min": 0.6
+    },
+    "weekly": {
+      "milestone_completion_range": [
+        0.25,
+        0.27
+      ],
+      "mentor_sync_status": "ESCALATE",
+      "mentor_sync_timeliness_range": [
+        0.2,
+        0.4
+      ]
+    }
+  },
+  "expected_risks": [
+    "blocker",
+    "schedule_delay"
+  ]
+}
