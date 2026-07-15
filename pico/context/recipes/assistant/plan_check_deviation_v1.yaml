@@ -1,0 +1,27 @@
+recipe_id: plan.check_deviation.v1
+name: check-plan-deviation
+required:
+  - system_policy
+  - runtime
+  - user_intent
+  - effective_plan
+  - confirmed_events
+  - dependencies
+  - plan_buffer
+optional:
+  - open_risks
+forbidden:
+  - chat_summary
+  - unsourced_impression
+budgets:
+  effective_plan: 1600
+  confirmed_events: 1800
+  dependencies: 1000
+  plan_buffer: 400
+  open_risks: 800
+evidence_required_for: []
+output_schema: deviation_check.v1
+allowed_tools: []
+allow_organization_memory: false
+memory_limit: 0
+persistence_policy: persist_before_loss

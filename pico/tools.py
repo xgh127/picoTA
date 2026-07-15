@@ -52,10 +52,7 @@ DELEGATE_TOOL_SPEC = {
 
 
 def legal_tool_names():
-    names = set(BASE_TOOL_SPECS) | {"delegate"}
-    # TODO[B]: 徐国洪 — 当 persona="ta" 时，在 legal_tool_names 中加入 TA 工具名
-    # names |= {"parse_daily_report", "read_project_board", "check_milestone", "detect_risk", "grade_rubric"}
-    return names
+    return set(BASE_TOOL_SPECS) | {"delegate"}
 
 TOOL_EXAMPLES = {
     "list_files": '<tool>{"name":"list_files","args":{"path":"."}}</tool>',
@@ -68,7 +65,7 @@ TOOL_EXAMPLES = {
 }
 
 
-def build_tool_registry(context, persona="coder"):
+def build_tool_registry(context):
     # 工具不是动态发现的，而是显式注册的。
     # 这样模型看到的是一个有边界、可审计的动作集合。
     tools = {
@@ -79,11 +76,6 @@ def build_tool_registry(context, persona="coder"):
     # 就连 delegate 这个工具都不再暴露给模型。
     if context.depth < context.max_depth:
         tools["delegate"] = {**DELEGATE_TOOL_SPEC, "run": partial(tool_delegate, context)}
-    # TODO[B]: 徐国洪 — 当 persona="ta" 时，合并 TA 工具集到 registry
-    # if persona == "ta":
-    #     from .ta.tools import build_ta_tool_registry
-    #     ta_tools = build_ta_tool_registry(context)
-    #     tools.update(ta_tools)
     return tools
 
 
@@ -200,8 +192,7 @@ def tool_search(context, args):
             ["rg", "-n", "--smart-case", "--max-count", "200", pattern, str(path)],
             cwd=context.root,
             capture_output=True,
-            encoding="utf-8",
-            errors="replace",
+            text=True,
         )
         return result.stdout.strip() or result.stderr.strip() or "(no matches)"
 
@@ -231,8 +222,7 @@ def tool_run_shell(context, args):
         cwd=context.root,
         shell=True,
         capture_output=True,
-        encoding="utf-8",
-        errors="replace",
+        text=True,
         timeout=timeout,
         # 这里传入的是过滤后的环境变量，而不是直接继承整个父 shell 环境，
         # 目的是减少敏感信息被意外带进命令执行环境的风险。

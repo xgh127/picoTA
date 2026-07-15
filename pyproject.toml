@@ -7,7 +7,7 @@ name = "pico"
 version = "0.1.0"
 description = "Small local coding agent for DeepSeek, OpenAI-compatible, Anthropic-compatible, and Ollama models"
 requires-python = ">=3.10"
-dependencies = []
+dependencies = ["pyyaml>=6.0"]
 
 [project.scripts]
 pico = "pico.cli:main"
@@ -20,6 +20,9 @@ dev = [
 
 [tool.setuptools.packages.find]
 include = ["pico*"]
+
+[tool.setuptools.package-data]
+"pico.context" = ["recipes/*.yaml", "recipes/assistant/*.yaml", "skills/**/*.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

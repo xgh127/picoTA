@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 import re
 
+from .context.artifact_store import ARTIFACT_THRESHOLD_CHARS, ArtifactStore
 from .workspace import clip
 
 
@@ -42,9 +43,23 @@ class ToolExecutor:
     def __init__(self, agent):
         self.agent = agent
 
+    @staticmethod
+    def _persist_or_clip(agent, name, raw_result):
+        text = str(raw_result)
+        if len(text) <= ARTIFACT_THRESHOLD_CHARS or not agent.feature_enabled("artifact_store"):
+            return clip(text)
+        # C1: full result is content-addressed and recoverable via a stable
+        # reference, instead of being lossily truncated.
+        record = agent.artifact_store.put(agent.subject_scope_key, name, text)
+        agent.pending_artifact_ids.append(record.artifact_id)
+        return ArtifactStore.render_reference(record)
+
     def execute(self, name, args):
         agent = self.agent
-        if agent.allowed_tools is not None and name not in agent.allowed_tools:
+        context_allowed = getattr(agent, "current_context_allowed_tools", None)
+        if (agent.allowed_tools is not None and name not in agent.allowed_tools) or (
+            context_allowed is not None and name not in context_allowed
+        ):
             return ToolExecutionResult(
                 content=f"error: tool '{name}' is not allowed in this run",
                 metadata=_metadata(
@@ -112,7 +127,8 @@ class ToolExecutor:
         before_snapshot = agent.capture_workspace_snapshot() if tool["risky"] else {}
         after_snapshot = before_snapshot
         try:
-            content = clip(tool["run"](args))
+            raw_result = tool["run"](args)
+            content = self._persist_or_clip(agent, name, raw_result)
             after_snapshot = agent.capture_workspace_snapshot() if tool["risky"] else before_snapshot
             affected_paths, diff_summary = agent.diff_workspace_snapshots(before_snapshot, after_snapshot)
             workspace_changed = bool(affected_paths)

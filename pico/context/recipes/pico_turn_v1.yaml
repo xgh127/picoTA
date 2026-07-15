@@ -1,0 +1,26 @@
+recipe_id: pico.turn.v1
+name: pico-main-turn
+required:
+  - stable_prefix
+  - runtime_envelope
+  - current_input
+  - session_checkpoint
+optional:
+  - workspace_context
+  - memory_card
+  - episodic_note
+  - transcript_entry
+forbidden: []
+budgets:
+  stable_prefix: 900
+  workspace_context: 1800
+  session_checkpoint: 200
+  memory_card: 300
+  transcript_entry: 1300
+evidence_required_for:
+  - durable_memory_promotion
+output_schema: pico_turn_prompt.v1
+allowed_tools: [list_files, read_file, search, run_shell, write_file, patch_file, delegate]
+allow_organization_memory: false
+memory_limit: 5
+persistence_policy: persist_before_loss

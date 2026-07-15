@@ -37,11 +37,6 @@ DURABLE_TOPIC_DEFAULTS = {
         "summary": "Stable user preferences.",
         "tags": ["preference"],
     },
-    # TODO[B]: 徐国洪 — 注册 TA 场景的 3 个 durable topic
-    #   当 detect_risk / grade_rubric 等 TA 工具沉淀 skill 时使用。
-    # "ta-project-standards": {"title": ..., "summary": ..., "tags": ["ta", "standard"]},
-    # "ta-intern-flow": {"title": ..., "summary": ..., "tags": ["ta", "flow"]},
-    # "ta-faq": {"title": ..., "summary": ..., "tags": ["ta", "faq"]},
 }
 
 

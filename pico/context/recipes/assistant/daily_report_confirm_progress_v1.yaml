@@ -1,0 +1,29 @@
+recipe_id: daily_report.confirm_progress.v1
+name: confirm-daily-progress
+required:
+  - system_policy
+  - runtime
+  - user_intent
+  - submitted_content
+  - yesterday_commitments
+  - active_tasks
+  - acceptance_criteria
+optional:
+  - current_stage_gate
+  - session_checkpoint
+forbidden:
+  - unrelated_project_memory
+budgets:
+  submitted_content: 3000
+  yesterday_commitments: 600
+  active_tasks: 1800
+  acceptance_criteria: 1000
+  current_stage_gate: 600
+  session_checkpoint: 500
+evidence_required_for:
+  - task_status_change
+output_schema: progress_confirmation.v1
+allowed_tools: []
+allow_organization_memory: false
+memory_limit: 0
+persistence_policy: persist_before_loss

@@ -1,13 +1,8 @@
-import re
 import shutil
 import subprocess
-import sys
 from dataclasses import dataclass
 
 from .workspace import IGNORED_NAMES
-
-SHELL_TIMEOUT = 10
-SHELL_ALLOWED_COMMANDS = ("pwd", "ls")
 
 
 @dataclass(frozen=True)
@@ -23,7 +18,6 @@ TOOL_SPECS = {
     "search": ToolSpec("Search text in the workspace.", False, '{"pattern": "str", "path": "str=."}'),
     "write_file": ToolSpec("Write a text file.", True, '{"path": "str", "content": "str"}'),
     "patch_file": ToolSpec("Replace one exact text block in a file.", True, '{"path": "str", "old_text": "str", "new_text": "str"}'),
-    "run_shell": ToolSpec("Run a shell command in the workspace (pwd, ls only).", True, '{"command": "str"}'),
 }
 
 
@@ -78,13 +72,6 @@ def validate_tool(workspace, name, args):
         count = path.read_text(encoding="utf-8", errors="replace").count(old_text)
         if count != 1:
             raise ValueError(f"old_text must occur exactly once, found {count}")
-    if name == "run_shell":
-        command = str(args.get("command", "")).strip()
-        if not command:
-            raise ValueError("command must not be empty")
-        base = command.split()[0] if command.split() else ""
-        if base not in SHELL_ALLOWED_COMMANDS:
-            raise ValueError(f"command not allowed: {base!r} (allowed: {', '.join(SHELL_ALLOWED_COMMANDS)})")
 
 
 def run_tool(workspace, name, args):
@@ -99,8 +86,6 @@ def run_tool(workspace, name, args):
         return _write_file(workspace, args)
     if name == "patch_file":
         return _patch_file(workspace, args)
-    if name == "run_shell":
-        return _run_shell(workspace, args)
     raise ValueError(f"unknown tool: {name}")
 
 
@@ -165,32 +150,3 @@ def _patch_file(workspace, args):
     new_text = str(args["new_text"])
     path.write_text(text.replace(old_text, new_text, 1), encoding="utf-8")
     return f"patched {workspace.relative(path)}"
-
-
-def _run_shell(workspace, args):
-    command = str(args["command"]).strip()
-    try:
-        if sys.platform == "win32":
-            result = subprocess.run(
-                ["powershell.exe", "-NoProfile", "-Command", command],
-                cwd=workspace.root,
-                capture_output=True,
-                text=True,
-                timeout=SHELL_TIMEOUT,
-            )
-        else:
-            result = subprocess.run(
-                command,
-                shell=True,
-                cwd=workspace.root,
-                capture_output=True,
-                text=True,
-                timeout=SHELL_TIMEOUT,
-            )
-    except subprocess.TimeoutExpired:
-        return f"error: command timed out after {SHELL_TIMEOUT}s"
-
-    output = result.stdout + result.stderr
-    if not output:
-        return "(no output)"
-    return output.strip()

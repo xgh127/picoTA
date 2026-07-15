@@ -17,6 +17,10 @@ DEFAULT_SECTION_BUDGETS = {
     "relevant_memory": 1200,
     "history": 5200,
 }
+# chars-per-token proxy, matching pico.context.block.estimate_tokens's
+# chars//4 approximation -- kept in sync so the char-budgeted
+# ContextManager and the token-budgeted design-doc formula agree.
+CHARS_PER_TOKEN = 4
 DEFAULT_SECTION_FLOORS = {
     "prefix": 1200,
     "memory": 400,
@@ -28,6 +32,40 @@ DEFAULT_REDUCTION_ORDER = ("relevant_memory", "history", "memory", "prefix")
 SECTION_ORDER = ("prefix", "memory", "relevant_memory", "history", "current_request")
 CURRENT_REQUEST_SECTION = "current_request"
 RELEVANT_MEMORY_LIMIT = 3
+
+
+def compute_budget(context_window):
+    """§5.1's dynamic per-model budget formula, in tokens.
+
+    `context_window` (`W`) is the model's total context window in tokens.
+    The proportions below are the design doc's stated initial values --
+    "具体比例是初始值，需按模型窗口和线上分布配置" -- callers needing
+    different ratios should override at the model-adapter layer, not here.
+    """
+    window = int(context_window)
+    output_reserve = max(8_000, int(0.20 * window))
+    tool_reserve = max(4_000, int(0.08 * window))
+    safety_buffer = max(2_000, int(0.05 * window))
+    input_budget = max(1, window - output_reserve - tool_reserve - safety_buffer)
+    soft_target = int(0.70 * input_budget)
+    hard_trigger = int(0.88 * input_budget)
+    return {
+        "context_window": window,
+        "output_reserve": output_reserve,
+        "tool_reserve": tool_reserve,
+        "safety_buffer": safety_buffer,
+        "input_budget": input_budget,
+        "soft_target": soft_target,
+        "hard_trigger": hard_trigger,
+    }
+
+
+def _scale_section_budgets(section_budgets, new_total_chars):
+    baseline_total = sum(section_budgets.values())
+    if baseline_total <= 0 or new_total_chars <= 0:
+        return dict(section_budgets)
+    ratio = new_total_chars / baseline_total
+    return {section: max(1, int(chars * ratio)) for section, chars in section_budgets.items()}
 
 
 def _tail_clip(text, limit):
@@ -61,24 +99,29 @@ class ContextManager:
     def __init__(
         self,
         agent,
-        total_budget=DEFAULT_TOTAL_BUDGET,
+        total_budget=None,
         section_budgets=None,
         section_floors=None,
         reduction_order=None,
+        context_window=None,
     ):
         self.agent = agent
-        self.total_budget = int(total_budget)
-        # TODO[A]: 钟俊 — 当 agent.persona == "ta" 时，使用 SECTION_WEIGHTS_TA
-        # 覆盖默认的 section_budgets 和 section_floors，让 project_state 段获得更高预算。
-        self.section_budgets = dict(DEFAULT_SECTION_BUDGETS)
+        self.budget_info = None
+        if context_window:
+            # A model adapter declared its context window (`W`) -- derive
+            # this run's char budget from §5.1's formula instead of the
+            # static default, so a small-window model doesn't get sized for
+            # a large one and vice versa.
+            self.budget_info = compute_budget(context_window)
+            default_total = self.budget_info["soft_target"] * CHARS_PER_TOKEN
+            default_sections = _scale_section_budgets(DEFAULT_SECTION_BUDGETS, default_total)
+        else:
+            default_total = DEFAULT_TOTAL_BUDGET
+            default_sections = DEFAULT_SECTION_BUDGETS
+        self.total_budget = int(total_budget) if total_budget is not None else default_total
+        self.section_budgets = dict(default_sections)
         if section_budgets:
             self.section_budgets.update({str(key): int(value) for key, value in section_budgets.items()})
-        # TA 场景下上下文预算重分配
-        if hasattr(agent, "persona") and agent.persona == "ta":
-            from .ta.persona import SECTION_WEIGHTS_TA, SECTION_FLOORS_TA
-            self.section_budgets.update(SECTION_WEIGHTS_TA)
-            if section_floors is None:
-                section_floors = SECTION_FLOORS_TA
         self._section_floor_overrides = {str(key): int(value) for key, value in (section_floors or {}).items()}
         self.section_floors = self._compute_section_floors()
         self.reduction_order = tuple(reduction_order or DEFAULT_REDUCTION_ORDER)
@@ -478,6 +521,7 @@ class ContextManager:
             "prompt_chars": len(prompt),
             "prompt_budget_chars": self.total_budget,
             "prompt_over_budget": len(prompt) > self.total_budget,
+            "dynamic_budget": dict(self.budget_info) if self.budget_info else None,
             "section_order": list(SECTION_ORDER),
             "section_budgets": {
                 section: (None if section == CURRENT_REQUEST_SECTION else int(budgets.get(section, 0)))

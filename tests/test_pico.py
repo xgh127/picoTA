@@ -1057,12 +1057,14 @@ def test_prompt_budget_metadata_records_budget_decisions(tmp_path):
     relevant_section = agent.model_client.prompts[0].split("Relevant memory:\n", 1)[1].split("\n\nTranscript:", 1)[0]
 
     assert metadata["relevant_memory"]["selected_count"] == 3
-    assert len(metadata["relevant_memory"]["rendered_notes"]) == 3
+    assert len(metadata["relevant_memory"]["selected_block_ids"]) == 3
+    assert metadata["relevant_memory"]["rendered_count"] == 3
     assert len([line for line in relevant_section.splitlines() if line.startswith("- ")]) == 3
     assert "alpha episodic" in relevant_section
     assert "beta episodic" in relevant_section
     assert "gamma episodic" in relevant_section
-    assert metadata["current_request"]["text"] == "recall"
+    assert "text" not in metadata["current_request"]
+    assert metadata["current_request"]["raw_chars"] == len("recall")
     assert metadata["current_request"]["rendered_chars"] == len("recall")
 
 
@@ -1668,7 +1670,13 @@ def test_agent_records_model_cache_metadata_in_last_prompt_metadata(tmp_path):
     assert agent.last_prompt_metadata["cached_tokens"] == 512
     assert agent.last_prompt_metadata["cache_hit"] is True
     assert agent.last_prompt_metadata["prefix_hash"]
-    assert agent.last_prompt_metadata["prompt_cache_key"] == agent.last_prompt_metadata["prefix_hash"]
+    # `prompt_cache_key` is now the Route Prefix cache_fingerprint (design
+    # doc §2.3: subject_scope_key + model + actor_role + ... + tool_schema_hash),
+    # not the bare prefix hash -- it must still be present, stable, and tied
+    # to the same compile's Manifest.
+    assert agent.last_prompt_metadata["prompt_cache_key"]
+    assert agent.last_prompt_metadata["prompt_cache_key"] == agent.last_prompt_metadata["cache_fingerprint"]
+    assert agent.last_prompt_metadata["prompt_cache_key"] == agent.last_manifest.cache["fingerprint"]
 
 
 def test_recent_transcript_entries_stay_richer_than_older_ones(tmp_path):
@@ -1691,6 +1699,7 @@ def test_recent_transcript_entries_stay_richer_than_older_ones(tmp_path):
 
     assert recent_text in prompt
     assert old_text not in prompt
+    assert 3 <= agent.last_prompt_metadata["history"]["rendered_count"] <= 5
 
 
 def test_public_api_exports_resolve_through_package_path():

@@ -1,0 +1,27 @@
+recipe_id: next_day.plan.v1
+name: plan-next-day
+required:
+  - system_policy
+  - runtime
+  - user_intent
+  - current_stage
+  - critical_path
+  - next_seven_day_dependencies
+  - available_capacity
+optional:
+  - profile_capability
+forbidden:
+  - expired_profile
+  - disputed_profile
+budgets:
+  current_stage: 1000
+  critical_path: 1600
+  next_seven_day_dependencies: 1200
+  available_capacity: 400
+  profile_capability: 600
+evidence_required_for: []
+output_schema: next_day_plan.v1
+allowed_tools: []
+allow_organization_memory: false
+memory_limit: 3
+persistence_policy: persist_before_loss

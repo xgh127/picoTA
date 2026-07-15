@@ -1,0 +1,27 @@
+recipe_id: pico.compact.v1
+name: pico-rehydrate-after-compaction
+required:
+  - stable_prefix
+  - runtime_envelope
+  - session_checkpoint
+  - current_input
+optional:
+  - workspace_context
+  - evidence_capsule
+  - memory_card
+  - transcript_entry
+forbidden:
+  - episodic_note
+budgets:
+  stable_prefix: 900
+  workspace_context: 800
+  session_checkpoint: 400
+  evidence_capsule: 300
+  memory_card: 300
+  transcript_entry: 900
+evidence_required_for: []
+output_schema: pico_compact_prompt.v1
+allowed_tools: [list_files, read_file, search, run_shell, write_file, patch_file, delegate]
+allow_organization_memory: false
+memory_limit: 5
+persistence_policy: persist_before_loss

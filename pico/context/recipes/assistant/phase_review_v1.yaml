@@ -1,0 +1,26 @@
+recipe_id: phase.review.v1
+name: review-phase
+required:
+  - system_policy
+  - runtime
+  - user_intent
+  - phase_events
+  - plan_completion
+  - current_stage_gate
+optional:
+  - evidence_lookup
+  - memory_candidates
+forbidden:
+  - other_project_data
+budgets:
+  phase_events: 2200
+  plan_completion: 1000
+  current_stage_gate: 800
+  evidence_lookup: 1000
+  memory_candidates: 600
+evidence_required_for: []
+output_schema: phase_review.v1
+allowed_tools: []
+allow_organization_memory: false
+memory_limit: 0
+persistence_policy: persist_before_loss

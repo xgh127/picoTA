@@ -13,7 +13,7 @@ import textwrap
 
 from .config import load_project_env, provider_env
 from .providers.clients import AnthropicCompatibleModelClient, OllamaModelClient, OpenAICompatibleModelClient
-from .runtime import Pico, SessionStore
+from .runtime import DEFAULT_RECIPE_ID, Pico, SessionStore
 from .workspace import WorkspaceContext, middle
 
 DEFAULT_SECRET_ENV_NAMES = (
@@ -118,8 +118,21 @@ def _configured_secret_names(args):
     return sorted(configured_secret_names)
 
 
+def _effective_context_window(args):
+    # §5.1's dynamic budget formula needs the model's window size (`W`) from
+    # somewhere; Pico has no built-in table of per-model window sizes (those
+    # drift too often to hardcode), so this is opt-in via flag/env. Absent
+    # either, ContextManager keeps its static default budget unchanged.
+    explicit = getattr(args, "context_window", None)
+    if explicit:
+        return int(explicit)
+    env_value = provider_env("PICO_CONTEXT_WINDOW", ())
+    return int(env_value) if env_value else None
+
+
 def _build_model_client(args):
     provider = _effective_provider(args)
+    context_window = _effective_context_window(args)
     # CLI 只负责把 provider 选择翻译成具体 client。
     # 真正的提示词格式、缓存支持、HTTP 协议差异，都封装在 models.py 里。
     if provider == "openai":
@@ -135,6 +148,7 @@ def _build_model_client(args):
             api_key=api_key,
             temperature=args.temperature,
             timeout=getattr(args, "openai_timeout", getattr(args, "ollama_timeout", 300)),
+            context_window=context_window,
         )
     if provider == "anthropic":
         model = _effective_model(args, provider)
@@ -149,6 +163,7 @@ def _build_model_client(args):
             api_key=api_key,
             temperature=args.temperature,
             timeout=getattr(args, "openai_timeout", getattr(args, "ollama_timeout", 300)),
+            context_window=context_window,
         )
     if provider == "deepseek":
         model = _effective_model(args, provider)
@@ -160,6 +175,7 @@ def _build_model_client(args):
             api_key=api_key,
             temperature=args.temperature,
             timeout=getattr(args, "openai_timeout", getattr(args, "ollama_timeout", 300)),
+            context_window=context_window,
         )
 
     model = _effective_model(args, provider)
@@ -170,6 +186,7 @@ def _build_model_client(args):
         temperature=args.temperature,
         top_p=args.top_p,
         timeout=args.ollama_timeout,
+        context_window=context_window,
     )
 
 
@@ -224,7 +241,7 @@ def build_agent(args):
     为什么存在：
     命令行参数只是字符串和开关，runtime 需要的是已经装配好的对象图：
     model client、workspace snapshot、session store、secret 配置等。
-    这个函数负责把"启动参数"翻译成"agent 运行现场"。
+    这个函数负责把“启动参数”翻译成“agent 运行现场”。
 
     输入 / 输出：
     - 输入：`argparse` 解析后的 `args`
@@ -244,29 +261,18 @@ def build_agent(args):
     session_id = args.resume
     if session_id == "latest":
         session_id = store.latest()
-    # TODO[A]: 钟俊 — 将 persona 参数传递给 Pico，使其能按 persona 选前缀和工具集
-    persona = getattr(args, "persona", "coder")
-    pico_kwargs = dict(
-        approval_policy=args.approval,
-        max_steps=args.max_steps,
-        max_new_tokens=args.max_new_tokens,
-        secret_env_names=configured_secret_names,
-        persona=persona,
-    )
     if session_id:
         return Pico.from_session(
             model_client=model,
             workspace=workspace,
             session_store=store,
             session_id=session_id,
-            **pico_kwargs,
+            approval_policy=args.approval,
+            max_steps=args.max_steps,
+            max_new_tokens=args.max_new_tokens,
+            secret_env_names=configured_secret_names,
+            default_recipe_id=getattr(args, "recipe", DEFAULT_RECIPE_ID),
         )
-    return Pico(
-        model_client=model,
-        workspace=workspace,
-        session_store=store,
-        **pico_kwargs,
-    )
     return Pico(
         model_client=model,
         workspace=workspace,
@@ -275,6 +281,7 @@ def build_agent(args):
         max_steps=args.max_steps,
         max_new_tokens=args.max_new_tokens,
         secret_env_names=configured_secret_names,
+        default_recipe_id=getattr(args, "recipe", DEFAULT_RECIPE_ID),
     )
 
 
@@ -285,9 +292,6 @@ def build_arg_parser():
     )
     parser.add_argument("prompt", nargs="*", help="Optional one-shot prompt.")
     parser.add_argument("--cwd", default=".", help="Workspace directory.")
-    # TODO[A]: 钟俊 — 添加 --persona 参数支持 TA 模式
-    # 使用方式: pico --persona ta
-    parser.add_argument("--persona", choices=("coder", "ta"), default="coder", help="Agent persona: coder (default) or ta (teaching assistant).")
     parser.add_argument(
         "--provider",
         choices=PROVIDER_CHOICES,
@@ -304,6 +308,12 @@ def build_arg_parser():
     parser.add_argument("--ollama-timeout", type=int, default=300, help="Ollama request timeout in seconds.")
     parser.add_argument("--openai-timeout", type=int, default=300, help="OpenAI-compatible request timeout in seconds.")
     parser.add_argument("--resume", default=None, help="Session id to resume or 'latest'.")
+    parser.add_argument(
+        "--recipe",
+        default=DEFAULT_RECIPE_ID,
+        help="Context Recipe id to compile the prompt with. Defaults to pico.turn.v1; "
+        "pass an assistant recipe id (e.g. daily_report.collect.v1) to demo that scenario.",
+    )
     parser.add_argument("--approval", choices=("ask", "auto", "never"), default="ask", help="Approval policy for risky tools.")
     parser.add_argument(
         "--secret-env-name",
@@ -314,6 +324,13 @@ def build_arg_parser():
     )
     parser.add_argument("--max-steps", type=int, default=6, help="Maximum tool/model iterations per request.")
     parser.add_argument("--max-new-tokens", type=int, default=512, help="Maximum model output tokens per step.")
+    parser.add_argument(
+        "--context-window",
+        type=int,
+        default=None,
+        help="Model context window in tokens, used to size the dynamic prompt budget (design doc §5.1). "
+        "Defaults to PICO_CONTEXT_WINDOW, or the static default budget if unset.",
+    )
     parser.add_argument("--temperature", type=float, default=0.2, help="Sampling temperature sent to Ollama.")
     parser.add_argument("--top-p", type=float, default=0.9, help="Top-p sampling value sent to Ollama.")
     return parser

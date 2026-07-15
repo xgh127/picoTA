@@ -1,0 +1,23 @@
+recipe_id: daily_report.collect.v1
+name: collect-daily-report
+required:
+  - system_policy
+  - runtime
+  - user_intent
+  - submitted_content
+optional: []
+forbidden:
+  - unrelated_profile
+  - case_procedure
+  - full_report_history
+budgets:
+  system_policy: 1200
+  runtime: 300
+  user_intent: 300
+  submitted_content: 3000
+evidence_required_for: []
+output_schema: daily_report_submission.v1
+allowed_tools: []
+allow_organization_memory: false
+memory_limit: 0
+persistence_policy: persist_before_loss

@@ -1,5 +1,5 @@
 from pico import FakeModelClient, Pico, SessionStore, WorkspaceContext
-from pico.context_manager import ContextManager
+from pico.context_manager import DEFAULT_TOTAL_BUDGET, ContextManager, compute_budget
 
 
 def build_workspace(tmp_path):
@@ -237,3 +237,73 @@ def test_context_manager_relevant_memory_can_mix_durable_notes(tmp_path):
     assert metadata["relevant_memory"]["selected_durable_count"] == 1
     assert metadata["relevant_memory"]["selected_sources"] == ["project-conventions"]
     assert metadata["relevant_memory"]["selected_kinds"] == ["durable"]
+
+
+def test_compute_budget_matches_design_doc_formula_for_a_large_window():
+    # §5.1: output_reserve/tool_reserve/safety_buffer are each a floor OR a
+    # window-proportional share, whichever is bigger; a 200k-token window is
+    # big enough that the proportional share wins for all three.
+    budget = compute_budget(200_000)
+
+    assert budget["output_reserve"] == 40_000  # max(8_000, 0.20 * 200_000)
+    assert budget["tool_reserve"] == 16_000  # max(4_000, 0.08 * 200_000)
+    assert budget["safety_buffer"] == 10_000  # max(2_000, 0.05 * 200_000)
+    assert budget["input_budget"] == 200_000 - 40_000 - 16_000 - 10_000
+    assert budget["soft_target"] == int(0.70 * budget["input_budget"])
+    assert budget["hard_trigger"] == int(0.88 * budget["input_budget"])
+    assert budget["soft_target"] < budget["hard_trigger"] < budget["input_budget"]
+
+
+def test_compute_budget_applies_floors_for_a_small_window():
+    # A small enough window means every reserve hits its floor instead of
+    # its proportional share.
+    budget = compute_budget(20_000)
+
+    assert budget["output_reserve"] == 8_000
+    assert budget["tool_reserve"] == 4_000
+    assert budget["safety_buffer"] == 2_000
+    assert budget["input_budget"] == 20_000 - 8_000 - 4_000 - 2_000
+
+
+def test_context_manager_without_context_window_keeps_the_static_default_budget(tmp_path):
+    agent = build_agent(tmp_path, [])
+
+    manager = ContextManager(agent)
+
+    assert manager.total_budget == DEFAULT_TOTAL_BUDGET
+    assert manager.budget_info is None
+
+
+def test_context_manager_scales_budget_from_a_declared_context_window(tmp_path):
+    agent = build_agent(tmp_path, [])
+
+    small_window_manager = ContextManager(agent, context_window=20_000)
+    large_window_manager = ContextManager(agent, context_window=200_000)
+
+    # A larger declared window must yield a larger char budget, derived from
+    # soft_target (not hard_trigger, per §5.1's "soft_target = 0.70 *
+    # input_budget" being the target the compiler packs blocks against).
+    assert large_window_manager.total_budget > small_window_manager.total_budget
+    assert small_window_manager.budget_info["soft_target"] > 0
+    assert large_window_manager.total_budget == large_window_manager.budget_info["soft_target"] * 4
+
+    # Section proportions are preserved, not reset to flat/equal shares.
+    baseline_ratio = large_window_manager.section_budgets["history"] / large_window_manager.section_budgets["prefix"]
+    default_manager = ContextManager(agent)
+    default_ratio = default_manager.section_budgets["history"] / default_manager.section_budgets["prefix"]
+    assert round(baseline_ratio, 2) == round(default_ratio, 2)
+
+
+def test_pico_wires_model_clients_declared_context_window_into_the_prompt_budget(tmp_path):
+    workspace = build_workspace(tmp_path)
+    store = SessionStore(tmp_path / ".pico" / "sessions")
+    agent = Pico(
+        model_client=FakeModelClient([], context_window=200_000),
+        workspace=workspace,
+        session_store=store,
+        approval_policy="auto",
+    )
+
+    assert agent.context_manager.budget_info is not None
+    assert agent.context_manager.budget_info["context_window"] == 200_000
+    assert agent.context_manager.total_budget != DEFAULT_TOTAL_BUDGET

@@ -1,0 +1,21 @@
+recipe_id: pico.delegate.v1
+name: pico-delegate-subtask
+required:
+  - stable_prefix
+  - runtime_envelope
+  - current_input
+optional:
+  - workspace_context
+  - transcript_entry
+forbidden:
+  - memory_card
+budgets:
+  stable_prefix: 900
+  workspace_context: 1200
+  transcript_entry: 800
+evidence_required_for: []
+output_schema: pico_turn_prompt.v1
+allowed_tools: [list_files, read_file, search, run_shell, write_file, patch_file, delegate]
+allow_organization_memory: false
+memory_limit: 0
+persistence_policy: persist_before_loss

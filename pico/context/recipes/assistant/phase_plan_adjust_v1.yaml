@@ -1,0 +1,29 @@
+recipe_id: phase_plan.adjust.v1
+name: adjust-phase-plan
+required:
+  - system_policy
+  - runtime
+  - user_intent
+  - project_goal
+  - current_stage
+  - adjacent_stages
+  - deviation_evidence
+optional:
+  - recent_plan_diff
+  - alternatives
+forbidden:
+  - unconfirmed_status_candidate
+budgets:
+  project_goal: 900
+  current_stage: 1400
+  adjacent_stages: 1200
+  deviation_evidence: 1600
+  recent_plan_diff: 800
+  alternatives: 800
+evidence_required_for:
+  - critical_plan_adjustment
+output_schema: phase_plan_adjustment.v1
+allowed_tools: []
+allow_organization_memory: false
+memory_limit: 0
+persistence_policy: persist_before_loss

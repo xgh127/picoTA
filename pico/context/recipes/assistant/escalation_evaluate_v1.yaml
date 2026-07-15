@@ -1,0 +1,25 @@
+recipe_id: escalation.evaluate.v1
+name: evaluate-escalation
+required:
+  - system_policy
+  - runtime
+  - user_intent
+  - policy_snapshot
+  - structured_metrics
+  - notification_fingerprint
+optional:
+  - evidence_capsule
+forbidden:
+  - llm_subjective_judgment
+budgets:
+  policy_snapshot: 1200
+  structured_metrics: 1000
+  notification_fingerprint: 400
+  evidence_capsule: 1200
+evidence_required_for:
+  - escalation
+output_schema: escalation_evaluation.v1
+allowed_tools: []
+allow_organization_memory: false
+memory_limit: 0
+persistence_policy: persist_before_loss

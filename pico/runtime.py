@@ -9,6 +9,8 @@ import hashlib
 import os
 import re
 import uuid
+from copy import deepcopy
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 
@@ -17,6 +19,17 @@ from .features import memory as memorylib
 from . import security as securitylib
 from .context_manager import ContextManager
 from .checkpoint import CHECKPOINT_NONE_STATUS
+from .context.artifact_store import ArtifactStore
+from .context.budget import token_counter_for
+from .context.compaction_llm import LLMCompactor
+from .context.compression import CompressionService, SessionCompactionError
+from .context.compiler import compile_context
+from .context.evidence import EvidenceClaim, enforce_capsule_or_raise, new_capsule
+from .context.memory_card import MemoryCardStore
+from .context.recipe import all_recipe_loader
+from .context.store import ContextStore
+from .context.transcript import TranscriptStore
+from .identity import IdentityResolutionError, StaticIdentityProvider
 from .prompt_prefix import build_prompt_prefix, tool_signature
 from .run_store import RunStore
 from .security import REDACTED_VALUE
@@ -27,11 +40,17 @@ from . import tools as toolkit
 from .workspace import IGNORED_PATH_NAMES, MAX_HISTORY, WorkspaceContext, clip, now
 
 DEFAULT_SHELL_ENV_ALLOWLIST = ("HOME", "LANG", "LC_ALL", "LC_CTYPE", "LOGNAME", "PATH", "PWD", "SHELL", "TERM", "TMPDIR", "TMP", "TEMP", "USER")
+DEFAULT_RECIPE_ID = "pico.turn.v1"
 DEFAULT_FEATURE_FLAGS = {
     "memory": True,
     "relevant_memory": True,
     "context_reduction": True,
     "prompt_cache": True,
+    "context_manifest": True,
+    "artifact_store": True,
+    "llm_compaction": False,
+    "reactive_compact": True,
+    "strict_evidence_gate": False,
 }
 DURABLE_MEMORY_INTENT_PATTERN = re.compile(r"(?i)\b(capture|remember|save|store|persist|note)\b")
 DURABLE_MEMORY_INTENT_ZH_PATTERN = re.compile(r"(记住|保存|记录|沉淀|长期记忆|持久记忆)")
@@ -68,13 +87,31 @@ class Pico:
         secret_env_names=None,
         feature_flags=None,
         allowed_tools=None,
-        persona="coder",
+        identity_provider=None,
+        identity_overrides=None,
+        scope_secret=None,
+        default_recipe_id=DEFAULT_RECIPE_ID,
+        timezone_name=None,
     ):
-        self.persona = persona
         self.model_client = model_client
         self.workspace = workspace
         self.root = Path(workspace.repo_root)
         self.session_store = session_store
+        self.default_recipe_id = str(default_recipe_id or DEFAULT_RECIPE_ID)
+        self.timezone = str(
+            timezone_name
+            or os.environ.get("TZ")
+            or datetime.now().astimezone().tzinfo
+            or "UTC"
+        )
+        self.identity_provider = identity_provider or StaticIdentityProvider.for_workspace(
+            self.root, overrides=identity_overrides, scope_secret=scope_secret,
+        )
+        # Fail-closed: identity is resolved once, eagerly, at construction time.
+        # Nothing downstream may catch IdentityResolutionError and fall back
+        # to a guessed scope.
+        self.resolved_identity = self.identity_provider.resolve(self.root)
+        self.subject_scope_key = self.resolved_identity.subject_scope_key
         self.approval_policy = approval_policy
         self.max_steps = max_steps
         self.max_new_tokens = max_new_tokens
@@ -88,13 +125,29 @@ class Pico:
             self.feature_flags.update({str(key): bool(value) for key, value in feature_flags.items()})
         self.allowed_tools = self._normalize_allowed_tools(allowed_tools)
         self.run_store = run_store or RunStore(Path(workspace.repo_root) / ".pico" / "runs")
+        self.context_store = ContextStore(self.root / ".pico" / "context" / "context.db")
+        self.artifact_store = ArtifactStore(self.root / ".pico" / "context" / "artifacts", self.context_store)
+        self.memory_card_store = MemoryCardStore(self.context_store)
+        self.recipes = all_recipe_loader()
+        self.last_manifest = None
+        self.last_evidence_capsule_ids = []
+        self.pending_artifact_ids = []
         self.session = session or {
             "id": datetime.now().strftime("%Y%m%d-%H%M%S") + "-" + uuid.uuid4().hex[:6],
             "created_at": now(),
             "workspace_root": workspace.repo_root,
+            "scope_type": "subject",
+            "subject_scope_key": self.subject_scope_key,
             "history": [],
             "memory": memorylib.default_memory_state(),
         }
+        stored_scope_key = str(self.session.get("subject_scope_key", ""))
+        if stored_scope_key and stored_scope_key != self.subject_scope_key:
+            raise IdentityResolutionError("session belongs to a different subject scope")
+        if session is not None and not stored_scope_key:
+            raise IdentityResolutionError("legacy unscoped session requires an explicit scope migration")
+        self.session["scope_type"] = "subject"
+        self.session["subject_scope_key"] = self.subject_scope_key
         self._ensure_session_shape()
         self.memory = memorylib.LayeredMemory(
             self.session.setdefault("memory", memorylib.default_memory_state()),
@@ -102,10 +155,25 @@ class Pico:
         )
         self.session["memory"] = self.memory.to_dict()
         self.tools = self._apply_tool_allowlist(self.build_tools())
+        self.current_context_allowed_tools = tuple(sorted(self.tools))
         self.tool_executor = ToolExecutor(self)
         self.prefix_state = self.build_prefix()
         self.prefix = self.prefix_state.text
-        self.context_manager = ContextManager(self)
+        self.context_manager = ContextManager(self, context_window=getattr(model_client, "context_window", None))
+        self.transcript_store = TranscriptStore(self.root / ".pico" / "context" / "transcripts")
+        self.llm_compactor = LLMCompactor(self.model_client) if self.feature_enabled("llm_compaction") else None
+        self.compression_service = CompressionService(
+            session_loader=self._load_current_session_for_compaction,
+            transcript_store=self.transcript_store,
+            token_counter=token_counter_for(self.model_client),
+            evidence_validator=self.context_store,
+            artifact_validator=self.artifact_store,
+            model_compactor=self.llm_compactor,
+            scope_resolver=self._resolve_compaction_scope,
+            hard_threshold_tokens=self._compaction_hard_threshold,
+        )
+        self.last_compaction_result = None
+        self.last_compaction_transcript_id = ""
         self.resume_state = self.evaluate_resume_state()
         self.session_path = self.session_store.save(self.session)
         self.current_task_state = None
@@ -115,8 +183,6 @@ class Pico:
         self.last_durable_promotions = []
         self.last_durable_rejections = []
         self.last_durable_superseded = []
-        # TODO[C]: 兰凯崴 — 实例化 AuditSink，在 emit_trace 中转发审计日志
-        self._audit_sink = None
         self._last_tool_result_metadata = {}
         self._last_prefix_refresh = {
             "workspace_changed": False,
@@ -142,11 +208,9 @@ class Pico:
             self.session["checkpoints"] = checkpoints
         checkpoints.setdefault("current_id", "")
         checkpoints.setdefault("items", {})
-        # TODO[A]: 钟俊 — runtime_identity 加 persona 字段，resume 时检测 persona drift
         runtime_identity = self.session.setdefault("runtime_identity", {})
         if not isinstance(runtime_identity, dict):
             self.session["runtime_identity"] = {}
-        runtime_identity.setdefault("persona", self.persona)
         resume_state = self.session.setdefault("resume_state", {})
         if not isinstance(resume_state, dict):
             self.session["resume_state"] = {}
@@ -181,10 +245,6 @@ class Pico:
         del bucket[:-limit]
 
     def build_tools(self):
-        # TODO[B]: 徐国洪 — 当 persona="ta" 时，合并 TA 工具集：
-        #   base_tools = toolkit.build_tool_registry(self.tool_context())
-        #   ta_tools = ta.tools.build_ta_tool_registry(self.tool_context())
-        #   return {**base_tools, **ta_tools}
         return toolkit.build_tool_registry(self.tool_context())
 
     @staticmethod
@@ -214,8 +274,7 @@ class Pico:
         return tool_signature(self.tools)
 
     def build_prefix(self):
-        # TODO[A]: 钟俊 — 将 persona 参数传给 build_prompt_prefix
-        return build_prompt_prefix(workspace=self.workspace, tools=self.tools, persona=self.persona)
+        return build_prompt_prefix(workspace=self.workspace, tools=self.tools)
 
     def _apply_prefix_state(self, prefix_state):
         self.prefix_state = prefix_state
@@ -281,8 +340,124 @@ class Pico:
         return prompt
 
     def record(self, item):
+        self.context_store.append_transcript(
+            self.subject_scope_key,
+            self.session["id"],
+            str(item.get("role", "")),
+            dict(item),
+            scope_type="subject",
+        )
         self.session["history"].append(item)
         self.session_path = self.session_store.save(self.session)
+
+    def _load_current_session_for_compaction(self, session_id):
+        if str(session_id) != str(self.session.get("id", "")):
+            raise SessionCompactionError("compaction requested a non-current session")
+        return self.session
+
+    def _resolve_compaction_scope(self, session_id, session=None):
+        if str(session_id) != str(self.session.get("id", "")):
+            raise SessionCompactionError("compaction scope requested for a non-current session")
+        return self.subject_scope_key
+
+    def _compaction_hard_threshold(self, target_tokens):
+        tokens = dict(getattr(self.last_manifest, "tokens", {}) or {})
+        value = int(tokens.get("hard_trigger", 0) or 0)
+        return value if value > 0 else max(1, int(target_tokens))
+
+    @staticmethod
+    def _compaction_target_tokens(prompt_metadata):
+        budget = dict(prompt_metadata.get("dynamic_budget", {}) or {})
+        soft_target = int(budget.get("soft_target", 0) or 0)
+        if soft_target > 0:
+            return soft_target
+        input_budget = int(budget.get("input_budget", 0) or 0)
+        return max(1, int(0.70 * input_budget)) if input_budget > 0 else 1
+
+    def _compacted_history_indices(self):
+        history = list(self.session.get("history", []))
+        recent_start = max(0, len(history) - self.compression_service.recent_message_limit)
+        indices = set(range(recent_start, len(history)))
+        tool_indices = [
+            index
+            for index, item in enumerate(history)
+            if item.get("role") == "tool" and "content" in item
+        ]
+        indices.update(tool_indices[-self.compression_service.complete_tool_result_limit :])
+        return tuple(sorted(indices))
+
+    def context_compaction_required(self, prompt_metadata):
+        if not self.feature_enabled("context_reduction"):
+            return False
+        history = list(self.session.get("history", []))
+        if len(self._compacted_history_indices()) >= len(history):
+            return False
+        budget = dict(prompt_metadata.get("dynamic_budget", {}) or {})
+        input_tokens = int(prompt_metadata.get("input_tokens", 0) or 0)
+        hard_trigger = int(budget.get("hard_trigger", 0) or 0)
+        exceeded_hard = hard_trigger > 0 and input_tokens > hard_trigger
+        transcript_reduced = any(
+            str(item.get("block_id", "")).startswith("transcript_entry:")
+            for item in prompt_metadata.get("budget_reductions", [])
+            if isinstance(item, dict)
+        )
+        return exceeded_hard or transcript_reduced
+
+    def compact_active_context(self, trigger, target_tokens):
+        checkpoint = self.current_checkpoint()
+        if not checkpoint:
+            raise SessionCompactionError("active Context compaction requires a Delta Checkpoint")
+        result = self.compression_service.compact_session(
+            self.session["id"],
+            trigger,
+            target_tokens,
+        )
+        if result.checkpoint_id != checkpoint.get("checkpoint_id"):
+            raise SessionCompactionError("compaction result checkpoint is no longer current")
+
+        summary = result.compact_summary
+        selected_indices = self._compacted_history_indices()
+        compacted_history = [deepcopy(self.session["history"][index]) for index in selected_indices]
+        checkpoint.update(
+            {
+                "current_goal": summary["goal"],
+                "plan_baseline": deepcopy(summary["plan_baseline"]),
+                "confirmed_facts": deepcopy(summary["confirmed_facts"]),
+                "active_deviations": deepcopy(summary["deviations"]),
+                "decisions": deepcopy(summary["decisions"]),
+                "open_loops": deepcopy(summary["open_loops"]),
+                "artifacts": deepcopy(summary["artifacts"]),
+                "next_actions": deepcopy(summary["next_actions"]),
+                "user_constraints": deepcopy(summary["user_constraints"]),
+                "uncertain_items": deepcopy(summary["uncertain_items"]),
+                "history_cursor": len(compacted_history),
+                "compaction": {
+                    "transcript_id": result.transcript_id,
+                    "trigger": str(trigger),
+                    "tokens_before": result.tokens_before,
+                    "tokens_after": result.tokens_after,
+                    "mode": result.rehydrated_context.get("compaction_mode", "delta"),
+                    "fallback_reason": result.rehydrated_context.get("fallback_reason", ""),
+                },
+            }
+        )
+        self.session["history"] = compacted_history
+        self.session_path = self.session_store.save(self.session)
+        self.context_store.insert_checkpoint_row(
+            checkpoint["checkpoint_id"],
+            self.subject_scope_key,
+            self.session["id"],
+            checkpoint,
+            scope_type="subject",
+        )
+        self.last_compaction_result = result
+        self.last_compaction_transcript_id = result.transcript_id
+        return result
+
+    def persist_context_snapshot(self, trigger):
+        record = self.compression_service.persist_snapshot(self.session["id"], trigger)
+        self.last_compaction_transcript_id = record.transcript_id
+        return record
 
     @staticmethod
     def looks_sensitive_env_name(name):
@@ -319,9 +494,21 @@ class Pico:
     def _build_prompt_and_metadata(self, user_message):
         refresh = self.refresh_prefix()
         self.resume_state = self.evaluate_resume_state()
-        prompt, metadata = self.context_manager.build(user_message)
+        # ContextCompiler is the only prompt assembly path.  The feature flag
+        # controls Manifest persistence for legacy experiments; it never
+        # bypasses Recipe, scope, trust, or budget enforcement.
+        compiled = compile_context(self, user_message, recipe_id=self.default_recipe_id, recipe_loader=self.recipes)
+        prompt, metadata = compiled.prompt, compiled.metadata
+        self.current_context_allowed_tools = tuple(compiled.allowed_tools)
+        self.last_manifest = compiled.manifest
+        self.context_store.insert_manifest(compiled.manifest)
+        metadata["manifest_id"] = compiled.manifest.request_id
         # 这里把“这轮 prompt 是怎么拼出来的”连同缓存相关状态一起记下来，
         # 后面 trace/report 才能解释清楚：为什么这一轮 prefix 变了、缓存有没有命中。
+        # `cache_fingerprint`（若 ContextCompiler 算过）优先于裸 prefix hash：
+        # 它按设计文档 §2.3 把 subject_scope_key/actor_role/recipe/tool schema
+        # 都编进指纹，避免不同 scope 的调用者共用同一个 provider 缓存命名空间。
+        cache_fingerprint = metadata.get("cache_fingerprint") or self.prefix_state.hash
         metadata.update(
             {
                 "prefix_chars": len(self.prefix),
@@ -333,7 +520,8 @@ class Pico:
                 "workspace_docs": len(self.workspace.project_docs),
                 "recent_commits": len(self.workspace.recent_commits),
                 "prefix_hash": self.prefix_state.hash,
-                "prompt_cache_key": self.prefix_state.hash,
+                "prompt_cache_key": cache_fingerprint,
+                "cache_fingerprint": cache_fingerprint,
                 "workspace_fingerprint": self.prefix_state.workspace_fingerprint,
                 "tool_signature": self.prefix_state.tool_signature,
                 "workspace_changed": refresh["workspace_changed"],
@@ -348,15 +536,34 @@ class Pico:
         metadata.update(self.detected_secret_env_summary())
         return prompt, metadata
 
+    def update_context_cache_manifest(self, completion_metadata):
+        if self.last_manifest is None:
+            return
+        completion_metadata = dict(completion_metadata or {})
+        if completion_metadata.get("cache_hit"):
+            status = "hit"
+        elif completion_metadata.get("prompt_cache_supported") or getattr(
+            self.model_client, "supports_prompt_cache", False
+        ):
+            status = "miss"
+        else:
+            status = "not_supported"
+        prefix_tokens = self.last_manifest.cache.get("prefix_tokens")
+        self.context_store.update_manifest_cache(
+            self.last_manifest.request_id,
+            status=status,
+            prefix_tokens=prefix_tokens,
+        )
+        cache = dict(self.last_manifest.cache)
+        cache["status"] = status
+        self.last_manifest = replace(self.last_manifest, cache=cache)
+
     def emit_trace(self, task_state, event, payload=None):
         payload = self.redact_artifact(payload or {})
         payload["event"] = event
         payload["created_at"] = now()
-        # trace 是运行中的逐事件时间线，适合回答"这一轮 agent 到底做了什么"。
+        # trace 是运行中的逐事件时间线，适合回答“这一轮 agent 到底做了什么”。
         self.run_store.append_trace(task_state, payload)
-        # TODO[C]: 兰凯崴 — 将 trace 转发一份到 audit sink
-        # if self._audit_sink:
-        #     self._audit_sink.emit(event, payload, intern_id=self._intern_id())
         return payload
 
     def capture_workspace_snapshot(self):
@@ -511,15 +718,60 @@ class Pico:
         self.last_durable_promotions = promoted
         self.last_durable_rejections = rejections
         self.last_durable_superseded = superseded
+        self.last_evidence_capsule_ids = []
+        # `durable_memory_promotion` is the one decision the default Recipe
+        # hard-requires an Evidence Capsule for. The intent-match gate in
+        # `extract_durable_promotions` already means evidence is in hand by
+        # the time we get here, so this never blocks on the happy path --
+        # it exists to make the requirement real and testable, not just
+        # documented.
+        recipe = self.recipes.get(self.default_recipe_id)
+        for entry in promoted:
+            claim = EvidenceClaim(
+                field="status",
+                proposed_value="active",
+                evidence_refs=[
+                    "user_message:sha256:"
+                    + hashlib.sha256(str(user_message).encode("utf-8")).hexdigest(),
+                    "final_answer_line:sha256:"
+                    + hashlib.sha256(str(entry).encode("utf-8")).hexdigest(),
+                ],
+                verification="user_confirmed",
+            )
+            capsule = new_capsule(self.subject_scope_key, "durable_memory_promotion", subject_id=entry, claims=[claim])
+            if recipe is not None:
+                enforce_capsule_or_raise("durable_memory_promotion", capsule, recipe)
+            self.context_store.insert_evidence_capsule(capsule)
+            self.last_evidence_capsule_ids.append(capsule.capsule_id)
+            # Gate (b) from the design doc: an explicit user confirmation
+            # (the "remember/记住" intent match that got us here) is
+            # sufficient to promote straight to `active`, reusing this
+            # existing trigger rather than inventing a parallel confirm UI.
+            topic, _, note_text = entry.partition(": ")
+            card = self.memory_card_store.create_candidate(
+                type=self._memory_card_type_for_topic(topic),
+                scope_key=self.subject_scope_key,
+                statement=note_text or entry,
+                applicability=f"promoted via explicit user confirmation ({topic})",
+                evidence_refs=list(claim.evidence_refs),
+                confidence=0.9,
+            )
+            self.memory_card_store.confirm_candidate(card.memory_id)
         return promoted, rejections, superseded
+
+    @staticmethod
+    def _memory_card_type_for_topic(topic):
+        return {
+            "project-conventions": "project_knowledge",
+            "key-decisions": "project_knowledge",
+            "dependency-facts": "project_knowledge",
+            "user-preferences": "feedback_preference",
+        }.get(str(topic), "project_knowledge")
 
     def ask(self, user_message):
         from .agent_loop import AgentLoop
 
-        final = AgentLoop(self).run(user_message)
-        # TODO[C]: 兰凯崴 — 在 loop 结束后（write_report 之前）触发 post-hook 校验
-        # self.validate_and_maybe_escalate(final)
-        return final
+        return AgentLoop(self).run(user_message)
 
     def execute_tool(self, name, args):
         result = self.tool_executor.execute(name, args)
@@ -567,8 +819,6 @@ class Pico:
     def build_report(self, task_state):
         # report 是一次运行的最终摘要；
         # 和 trace 的区别在于，trace 关注过程，report 关注结果与关键指标。
-        # TODO[C]: 兰凯崴 — 在 report 中增加 escalation 状态
-        escalation_status = getattr(self, "_last_escalation_status", "none")
         return {
             "run_id": task_state.run_id,
             "task_id": task_state.task_id,
@@ -585,8 +835,6 @@ class Pico:
             "durable_rejections": list(self.last_durable_rejections),
             "durable_superseded": list(self.last_durable_superseded),
             "redacted_env": self.detected_secret_env_summary(),
-            "persona": self.persona,
-            "escalation_status": escalation_status,
         }
 
     def tool_example(self, name):
@@ -621,6 +869,8 @@ class Pico:
             read_only=True,
             secret_env_names=self.secret_env_names,
             shell_env_allowlist=self.shell_env_allowlist,
+            identity_provider=self.identity_provider,
+            default_recipe_id="pico.delegate.v1",
         )
         # 委派的目标是“调查”，不是“放权执行”。
         # 子 agent 以只读方式运行、步数更少，最后只把结论文本返回给父 agent。
@@ -653,7 +903,7 @@ class Pico:
         if self.read_only:
             return False
         if self.approval_policy == "auto":
-            # TODO[C]: 兰凯崴 — 当是"升级"操作时，写入 escalation trace 不阻断
+            self._record_approval_evidence(name, "policy_auto_approved", args)
             return True
         if self.approval_policy == "never":
             return False
@@ -661,27 +911,34 @@ class Pico:
             answer = input(f"approve {name} {json.dumps(args, ensure_ascii=True)}? [y/N] ")
         except EOFError:
             return False
-        return answer.strip().lower() in {"y", "yes"}
+        granted = answer.strip().lower() in {"y", "yes"}
+        if granted:
+            self._record_approval_evidence(name, "user_confirmed", args)
+        return granted
 
-    # TODO[C]: 兰凯崴 — 实现 validate_and_maybe_escalate post-hook
-    # 在 agent_loop.py 的 write_report 前调用。
-    # 不放 agent_loop 内部，而是作为 Pico 的 post-hook 方法，
-    # 在 agent_loop.run() 末尾（write_report 之前）调用。
-    def validate_and_maybe_escalate(self, final_answer: str) -> dict:
-        """校验 final answer 中的 risk 五元组，必要时触发升级。
-
-        这个函数是"输出约束"的强制点。它不阻断 loop（loop 已经结束了），
-        而是影响当前 run 的状态：如果校验不通过，置 NEED_REVIEW 状态，
-        写一条 escalation trace，让外层 driver 或下一个人工环节处理。
-
-        Args:
-            final_answer: agent 返回的最终答案
-
-        Returns:
-            {"status": "ok" | "NEED_REVIEW", "risks": [...], "escalated": bool}
-        """
-        # TODO[C]: 实现五元组校验和升级逻辑
-        return {"status": "ok", "risks": [], "escalated": False}
+    def _record_approval_evidence(self, name, verification, args=None):
+        # `destructive_tool_approval` is recorded for audit but is not part
+        # of any default Recipe's `evidence_required_for` -- it doesn't
+        # block, so it doesn't interfere with the many auto-approval flows
+        # already exercised elsewhere in the test suite.
+        claim = EvidenceClaim(
+            field="approval",
+            proposed_value="granted",
+            evidence_refs=[
+                "approval:sha256:"
+                + hashlib.sha256(
+                    json.dumps(
+                        {"args": dict(args or {}), "tool": str(name)},
+                        ensure_ascii=False,
+                        sort_keys=True,
+                        separators=(",", ":"),
+                    ).encode("utf-8")
+                ).hexdigest()
+            ],
+            verification=verification,
+        )
+        capsule = new_capsule(self.subject_scope_key, "destructive_tool_approval", subject_id=name, claims=[claim])
+        self.context_store.insert_evidence_capsule(capsule)
 
     @staticmethod
     def parse(raw):
