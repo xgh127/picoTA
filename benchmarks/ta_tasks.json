@@ -1,0 +1,295 @@
+{
+  "schema_version": 1,
+  "benchmark_name": "ta_assistant_tasks_v1",
+  "description": "固定的 TA Agent 小样本评测题，用来覆盖飞书入口下的日报生成、周报生成、项目进度查询、导师同步判断和项目计划拆解。",
+  "tasks": [
+    {
+      "id": "ta_daily_baseline_progress",
+      "category": "daily_report",
+      "prompt": "我今天完成了 PageIndex baseline 复现，记录了 latency、token 和 LLM calls，明天准备开始调研 GBrain 和 Cognee，帮我写日报。",
+      "fixture_case": "samples/case_baseline",
+      "expected_intent": "write_daily_report",
+      "covered_functions": [
+        "日报生成",
+        "证据提醒",
+        "次日计划"
+      ],
+      "expected_artifact": "生成包含今日进展、阻塞、证据、次日计划的规范日报。",
+      "pass_criteria": {
+        "required_sections": [
+          "今日进展",
+          "阻塞",
+          "证据",
+          "次日计划"
+        ],
+        "must_include_keywords": [
+          "PageIndex",
+          "baseline",
+          "latency",
+          "token",
+          "LLM calls",
+          "GBrain",
+          "Cognee"
+        ],
+        "mentor_sync_required": false
+      }
+    },
+    {
+      "id": "ta_daily_entity_granularity_blocker",
+      "category": "daily_report_with_blocker",
+      "prompt": "我今天卡在实体抽取粒度标准，不确定公司简称和全称是否要合并，明天准备整理 5 个边界 case，帮我写日报。",
+      "fixture_case": "samples/case_graph_blocked",
+      "expected_intent": "write_daily_report",
+      "covered_functions": [
+        "日报生成",
+        "阻塞识别",
+        "导师同步提醒"
+      ],
+      "expected_artifact": "生成规范日报，并识别实体抽取粒度相关阻塞，建议准备导师同步材料。",
+      "pass_criteria": {
+        "required_sections": [
+          "今日进展",
+          "阻塞",
+          "证据",
+          "次日计划"
+        ],
+        "must_include_keywords": [
+          "实体抽取粒度",
+          "公司简称",
+          "全称",
+          "5 个边界 case"
+        ],
+        "blocker_detected": true,
+        "mentor_sync_required": true
+      }
+    },
+    {
+      "id": "ta_daily_gt_pointer_testing_gap",
+      "category": "daily_report_with_quality_gap",
+      "prompt": "我今天完成了 G-T Pointer 的 entity_id 到 tree_node_ids 映射结构设计，但是还没有补单元测试，明天准备写 get_nodes_by_entity 的测试，帮我写日报。",
+      "fixture_case": "samples/case_mapping_delay",
+      "expected_intent": "write_daily_report",
+      "covered_functions": [
+        "日报生成",
+        "质量缺口识别",
+        "次日计划"
+      ],
+      "expected_artifact": "生成规范日报，并提醒补充映射模块单元测试作为可验证产物。",
+      "pass_criteria": {
+        "required_sections": [
+          "今日进展",
+          "阻塞",
+          "证据",
+          "次日计划"
+        ],
+        "must_include_keywords": [
+          "G-T Pointer",
+          "entity_id",
+          "tree_node_ids",
+          "单元测试",
+          "get_nodes_by_entity"
+        ],
+        "quality_gap_detected": true
+      }
+    },
+    {
+      "id": "ta_weekly_baseline_summary",
+      "category": "weekly_report",
+      "prompt": "这周完成了 PageIndex 单文档和多文档基线复现，整理了 latency、token、LLM calls 和 tree depth 指标，下周准备做图谱抽取工具选型，帮我写周报。",
+      "fixture_case": "samples/case_baseline",
+      "expected_intent": "write_weekly_report",
+      "covered_functions": [
+        "周报生成",
+        "本周完成总结",
+        "下周计划"
+      ],
+      "expected_artifact": "生成包含本周完成、证据、阻塞与风险、里程碑、下周计划的规范周报。",
+      "pass_criteria": {
+        "required_sections": [
+          "本周完成",
+          "证据",
+          "阻塞与风险",
+          "里程碑",
+          "下周计划"
+        ],
+        "must_include_keywords": [
+          "PageIndex",
+          "单文档",
+          "多文档",
+          "latency",
+          "token",
+          "LLM calls",
+          "tree depth",
+          "图谱抽取"
+        ],
+        "mentor_sync_required": false
+      }
+    },
+    {
+      "id": "ta_weekly_graph_quality_blocked",
+      "category": "weekly_report_with_blocker",
+      "prompt": "这周主要卡在图谱抽取质量不稳定，GBrain 和 Cognee 对同一批金融文档抽出来的实体粒度不一致，下周想先和导师确认实体边界标准，帮我写周报。",
+      "fixture_case": "samples/case_graph_blocked",
+      "expected_intent": "write_weekly_report",
+      "covered_functions": [
+        "周报生成",
+        "阻塞识别",
+        "导师同步提醒",
+        "下周计划"
+      ],
+      "expected_artifact": "生成规范周报，并判断图谱抽取质量问题需要导师同步。",
+      "pass_criteria": {
+        "required_sections": [
+          "本周完成",
+          "证据",
+          "阻塞与风险",
+          "里程碑",
+          "下周计划"
+        ],
+        "must_include_keywords": [
+          "图谱抽取质量",
+          "GBrain",
+          "Cognee",
+          "金融文档",
+          "实体粒度",
+          "导师",
+          "实体边界标准"
+        ],
+        "blocker_detected": true,
+        "mentor_sync_required": true
+      }
+    },
+    {
+      "id": "ta_project_plan_decomposition_8_weeks",
+      "category": "project_plan_decomposition",
+      "prompt": "请根据我的项目目标“面向金融文档撰写 Agent 的非向量化知识库构建与可追溯检索能力升级”，帮我拆成 8 周计划，每周给出目标、任务和可验收产物。",
+      "fixture_case": "samples/project_plan.json",
+      "expected_intent": "decompose_plan",
+      "covered_functions": [
+        "项目计划拆解",
+        "里程碑规划",
+        "验收标准生成"
+      ],
+      "expected_artifact": "生成 8 周项目计划，每周包含目标、任务、产物和验收标准。",
+      "pass_criteria": {
+        "required_weeks": 8,
+        "required_fields_per_week": [
+          "目标",
+          "任务",
+          "可验收产物"
+        ],
+        "must_include_keywords": [
+          "PageIndex",
+          "图谱",
+          "G-T Pointer",
+          "树剪枝",
+          "实验",
+          "报告"
+        ]
+      }
+    },
+    {
+      "id": "ta_query_project_progress",
+      "category": "project_progress_query",
+      "prompt": "我现在项目完成百分之多少了？请结合当前里程碑状态告诉我整体进度，以及哪些任务还没完成。",
+      "fixture_case": "samples/case_graph_blocked",
+      "expected_intent": "query_progress",
+      "covered_functions": [
+        "任务完成度查询",
+        "里程碑状态读取",
+        "未完成任务提示"
+      ],
+      "expected_artifact": "返回整体完成度百分比，并列出已完成、进行中和未完成里程碑。",
+      "pass_criteria": {
+        "must_include_keywords": [
+          "总体完成度",
+          "W1",
+          "W2",
+          "进行中",
+          "未完成"
+        ],
+        "must_use_project_state": true
+      }
+    },
+    {
+      "id": "ta_query_mentor_sync_time",
+      "category": "mentor_sync_query",
+      "prompt": "我下次什么时候应该找导师讨论？请结合最近几天的阻塞、导师同步时间和里程碑进度判断。",
+      "fixture_case": "samples/case_graph_blocked",
+      "expected_intent": "query_mentor_sync",
+      "covered_functions": [
+        "导师同步判断",
+        "阻塞识别",
+        "里程碑风险判断"
+      ],
+      "expected_artifact": "判断是否需要导师同步，并给出触发原因和建议同步内容。",
+      "pass_criteria": {
+        "must_include_keywords": [
+          "导师",
+          "同步",
+          "阻塞",
+          "里程碑",
+          "建议"
+        ],
+        "mentor_sync_required": true
+      }
+    },
+    {
+      "id": "ta_daily_evidence_gap_rewrite",
+      "category": "daily_report_evidence_gap",
+      "prompt": "我今天只写了“继续推进图谱抽取”，但是没有写具体产物和证据，你帮我补成一份更规范的日报，并提醒我还缺什么证据。",
+      "fixture_case": "samples/case_graph_blocked",
+      "expected_intent": "write_daily_report",
+      "covered_functions": [
+        "日报生成",
+        "证据缺口识别",
+        "追问建议"
+      ],
+      "expected_artifact": "生成规范日报，并明确提醒缺少具体产物、文件、截图或实验结果。",
+      "pass_criteria": {
+        "required_sections": [
+          "今日进展",
+          "阻塞",
+          "证据",
+          "次日计划"
+        ],
+        "must_include_keywords": [
+          "继续推进图谱抽取",
+          "具体产物",
+          "证据",
+          "文件",
+          "截图",
+          "实验结果"
+        ],
+        "evidence_gap_detected": true
+      }
+    },
+    {
+      "id": "ta_weekly_gt_pointer_delay_risk",
+      "category": "weekly_risk_and_plan",
+      "prompt": "我这周进展不太明显，W3 的 G-T Pointer 映射还没完成，主要卡在跨文档共现实体的节点合并策略，请帮我判断当前风险、是否需要导师介入，并给出下周计划。",
+      "fixture_case": "samples/case_mapping_delay",
+      "expected_intent": "write_weekly_report",
+      "covered_functions": [
+        "周报生成",
+        "风险判断",
+        "导师同步提醒",
+        "下周计划"
+      ],
+      "expected_artifact": "识别 W3 里程碑延期风险，判断需要导师介入，并生成下周可执行计划。",
+      "pass_criteria": {
+        "must_include_keywords": [
+          "W3",
+          "G-T Pointer",
+          "跨文档共现实体",
+          "节点合并策略",
+          "风险",
+          "导师",
+          "下周计划"
+        ],
+        "schedule_delay_detected": true,
+        "mentor_sync_required": true
+      }
+    }
+  ]
+}
