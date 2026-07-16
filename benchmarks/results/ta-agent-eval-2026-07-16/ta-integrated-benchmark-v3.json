@@ -1,0 +1,1660 @@
+{
+  "benchmark": {
+    "metric_groups": {
+      "agent_mechanism_layer": [
+        "agent_average_score",
+        "skill_call_accuracy",
+        "tool_call_coverage",
+        "memory_state_correctness",
+        "trace_completeness",
+        "step_budget_rate"
+      ],
+      "functional_layer": [
+        "intent_accuracy",
+        "functional_pass_rate",
+        "functional_average_score",
+        "section_completion_rate",
+        "fact_coverage_rate",
+        "rule_decision_accuracy"
+      ]
+    },
+    "name": "ta_agent_integrated_benchmark_v3",
+    "schema_version": 3,
+    "source": "benchmarks\\ta_tasks.json",
+    "task_count": 10,
+    "task_distribution": {
+      "产物质量识别": 2,
+      "导师同步判断": 2,
+      "日报与周报生成": 3,
+      "项目计划拆解": 1,
+      "项目进度查询": 2
+    }
+  },
+  "captured_at": "2026-07-16T17:00:42.590410+08:00",
+  "category_summary": {
+    "artifact_quality_review": {
+      "average_total_score": 0.9785714285714285,
+      "pass_rate": 1.0,
+      "passed": 2,
+      "total": 2
+    },
+    "daily_report": {
+      "average_total_score": 0.9571428571428571,
+      "pass_rate": 1.0,
+      "passed": 1,
+      "total": 1
+    },
+    "mentor_sync_not_required": {
+      "average_total_score": 0.9142857142857143,
+      "pass_rate": 1.0,
+      "passed": 1,
+      "total": 1
+    },
+    "mentor_sync_required": {
+      "average_total_score": 1.0,
+      "pass_rate": 1.0,
+      "passed": 1,
+      "total": 1
+    },
+    "project_plan_decomposition": {
+      "average_total_score": 0.9142857142857143,
+      "pass_rate": 1.0,
+      "passed": 1,
+      "total": 1
+    },
+    "project_progress_delay": {
+      "average_total_score": 0.8571428571428571,
+      "pass_rate": 0.0,
+      "passed": 0,
+      "total": 1
+    },
+    "project_progress_query": {
+      "average_total_score": 0.9571428571428571,
+      "pass_rate": 1.0,
+      "passed": 1,
+      "total": 1
+    },
+    "weekly_report": {
+      "average_total_score": 1.0,
+      "pass_rate": 1.0,
+      "passed": 1,
+      "total": 1
+    },
+    "weekly_report_mixed": {
+      "average_total_score": 1.0,
+      "pass_rate": 1.0,
+      "passed": 1,
+      "total": 1
+    }
+  },
+  "failure_category_counts": {
+    "functional_verifier_failed": 1
+  },
+  "reproducibility": {
+    "agent_entrypoint": "pico.ta.feishu_router.handle_feishu_text",
+    "agent_mechanism_note": "Mechanism checks read metadata emitted by the TA router, including skill_used, tools_called, memory_reads, memory_writes, state_updates, and trace.",
+    "evaluator": "integrated-deterministic-rule-verifier",
+    "feishu_included": false,
+    "fixture_snapshot_id": "sha256:70e3e682ecfd59eeed2f9edd5034ceec45f911d537e06d4428b57353fc9ab1b4",
+    "locale": [
+      "Chinese (Simplified)_China",
+      "936"
+    ],
+    "timezone": "Asia/Shanghai"
+  },
+  "rows": [
+    {
+      "actual_intent": "write_daily_report",
+      "agent_checks": [
+        {
+          "actual": "daily_report_skill",
+          "detail": "expected=daily_report_skill, actual=daily_report_skill",
+          "expected": "daily_report_skill",
+          "name": "skill_call",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": [
+            "check_evidence_coverage",
+            "draft_daily_report",
+            "read_project_state"
+          ],
+          "detail": "coverage=100.00%, missing=[]",
+          "expected": [
+            "check_evidence_coverage",
+            "draft_daily_report",
+            "read_project_state"
+          ],
+          "name": "tool_call_coverage",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=False, actual=True",
+          "expected": false,
+          "name": "memory_read",
+          "passed": false,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=True, actual=True",
+          "expected": true,
+          "name": "memory_write",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=True, actual=True",
+          "expected": true,
+          "name": "state_update",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=True, actual=True",
+          "expected": true,
+          "name": "trace",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": 4,
+          "detail": "observed_steps=4, max_steps=6",
+          "expected": 6,
+          "name": "step_budget",
+          "passed": true,
+          "points": 1.0
+        }
+      ],
+      "agent_max_score": 7.0,
+      "agent_raw_score": 6.0,
+      "agent_score": 0.8571428571428571,
+      "category": "daily_report",
+      "covered_functions": [
+        "日报生成",
+        "证据保留",
+        "次日计划"
+      ],
+      "duration_ms": 10.84,
+      "execution_error": "",
+      "execution_succeeded": true,
+      "expected_artifact": "生成包含今日进展、阻塞、证据和次日计划的规范日报，并保留用户提供的实验指标与文件名。",
+      "expected_intent": "write_daily_report",
+      "failure_category": null,
+      "final_answer": "## 已帮你整理成日报\n\n### 规范日报草稿\n# 日报\n\n## 今日进展\n- 我今天完成了 PageIndex baseline 复现，记录了 latency、token 和 LLM calls，产物保存在 baseline_results.md，明天准备开始调研 GBrain 和 Cognee，帮我写日报。\n\n## 阻塞\n- 暂无\n\n## 证据\n- 待补充具体文件、截图、实验结果或任务链接。\n\n## 次日计划\n- 准备开始调研 GBrain 和 Cognee\n\n### Agent 分析\n## 第 1 天评估\n- 进展: 我今天完成了 PageIndex baseline 复现，记录了 latency、token 和 LLM calls，产物保存在 baseline_results.md，明天准备开始调研 GBrain 和 Cognee，帮我写日报。\n- 阻塞: 暂无\n- 风险:\n- 无明显风险\n- 次日建议:\n- 当前进度正常，明天继续推进活跃里程碑。\n- 次日计划建议保留 1 个主任务和 1 个可验证产物。\n- 当前活跃里程碑：环境搭建与基线复现。\n\n### 导师同步建议\n- 导师同步状态: OK，当前保持正常节奏即可。",
+      "fixture_case": "samples/case_baseline",
+      "fixture_copy_relpath": "workspaces\\ta_daily_baseline_progress\\case_baseline",
+      "functional_checks": [
+        {
+          "actual": true,
+          "detail": "actual=True",
+          "expected": true,
+          "name": "execution_succeeded",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "actual=True",
+          "expected": true,
+          "name": "intent_passed",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": [],
+          "detail": "all present",
+          "expected": [
+            "今日进展",
+            "阻塞",
+            "证据",
+            "次日计划"
+          ],
+          "name": "required_sections",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": 1.0,
+          "detail": "coverage=100.00%, missing=[]",
+          "expected": 0.8,
+          "name": "keyword_coverage",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": false,
+          "detail": "expected=False, actual=False",
+          "expected": false,
+          "name": "mentor_sync_required",
+          "passed": true,
+          "points": 1.0
+        }
+      ],
+      "functional_max_score": 5.0,
+      "functional_passed": true,
+      "functional_raw_score": 5.0,
+      "functional_score": 1.0,
+      "id": "ta_daily_baseline_progress",
+      "intent_passed": true,
+      "output_digest": "sha256:faba206b217d0838957e9ef4e82b427a62ea495522217471534bce065bc2550f",
+      "passed": true,
+      "project_state_relpath": "workspaces\\ta_daily_baseline_progress\\case_baseline\\project_state.json",
+      "prompt": "我今天完成了 PageIndex baseline 复现，记录了 latency、token 和 LLM calls，产物保存在 baseline_results.md，明天准备开始调研 GBrain 和 Cognee，帮我写日报。",
+      "scoring": {
+        "agent_weight": 0.3,
+        "functional_weight": 0.7,
+        "pass_rule": "functional_pass_required"
+      },
+      "status": "pass",
+      "total_score": 0.9571428571428571
+    },
+    {
+      "actual_intent": "write_weekly_report",
+      "agent_checks": [
+        {
+          "actual": "weekly_report_skill",
+          "detail": "expected=weekly_report_skill, actual=weekly_report_skill",
+          "expected": "weekly_report_skill",
+          "name": "skill_call",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": [
+            "draft_weekly_report",
+            "evaluate_milestone_completion",
+            "mentor_sync_check",
+            "read_daily_history",
+            "read_project_state"
+          ],
+          "detail": "coverage=100.00%, missing=[]",
+          "expected": [
+            "draft_weekly_report",
+            "evaluate_milestone_completion",
+            "read_daily_history",
+            "read_project_state"
+          ],
+          "name": "tool_call_coverage",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=True, actual=True",
+          "expected": true,
+          "name": "memory_read",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=True, actual=True",
+          "expected": true,
+          "name": "memory_write",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=True, actual=True",
+          "expected": true,
+          "name": "state_update",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=True, actual=True",
+          "expected": true,
+          "name": "trace",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": 6,
+          "detail": "observed_steps=6, max_steps=8",
+          "expected": 8,
+          "name": "step_budget",
+          "passed": true,
+          "points": 1.0
+        }
+      ],
+      "agent_max_score": 7.0,
+      "agent_raw_score": 7.0,
+      "agent_score": 1.0,
+      "category": "weekly_report",
+      "covered_functions": [
+        "周报生成",
+        "证据保留",
+        "里程碑关联",
+        "下周计划"
+      ],
+      "duration_ms": 5.039,
+      "execution_error": "",
+      "execution_succeeded": true,
+      "expected_artifact": "生成包含本周完成、证据、阻塞与风险、里程碑和下周计划的规范周报。",
+      "expected_intent": "write_weekly_report",
+      "failure_category": null,
+      "final_answer": "## 已帮你整理成周报\n\n### 规范周报草稿\n# 周报\n\n## 本周完成\n- 这周完成了 PageIndex 单文档和多文档 baseline 复现，整理了 latency、token、LLM calls 和 tree depth 指标，结果记录在 baseline_comparison.md。下周准备完成图谱抽取工具选型，帮我结合当前项目状态写周报。\n\n## 证据\n- 记录在 baseline_comparison.md\n\n## 阻塞与风险\n- 暂无明显阻塞。\n\n## 里程碑\n- 根据项目状态表更新当前里程碑完成情况。\n\n## 下周计划\n- 准备完成图谱抽取工具选型\n\n### Agent 分析\n## 周报评估\n- 覆盖天数: 3\n- 本周完成事项: 6 项\n- 里程碑完成度: 0.08\n- 风险统计:\n- 无明显风险\n- 重复风险: 无\n- 导师同步状态: OK\n- 下周计划:\n- 准备 W2 图谱抽取工具选型，对比 GBrain 和 Cognee 的输入输出格式。\n- 补齐多文档问答集的 latency/token/calls 埋点\n- 整理 PageIndex 基线瓶颈分析表",
+      "fixture_case": "samples/case_baseline",
+      "fixture_copy_relpath": "workspaces\\ta_weekly_baseline_summary\\case_baseline",
+      "functional_checks": [
+        {
+          "actual": true,
+          "detail": "actual=True",
+          "expected": true,
+          "name": "execution_succeeded",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "actual=True",
+          "expected": true,
+          "name": "intent_passed",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": [],
+          "detail": "all present",
+          "expected": [
+            "本周完成",
+            "证据",
+            "阻塞与风险",
+            "里程碑",
+            "下周计划"
+          ],
+          "name": "required_sections",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": 1.0,
+          "detail": "coverage=100.00%, missing=[]",
+          "expected": 0.8,
+          "name": "keyword_coverage",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": false,
+          "detail": "expected=False, actual=False",
+          "expected": false,
+          "name": "mentor_sync_required",
+          "passed": true,
+          "points": 1.0
+        }
+      ],
+      "functional_max_score": 5.0,
+      "functional_passed": true,
+      "functional_raw_score": 5.0,
+      "functional_score": 1.0,
+      "id": "ta_weekly_baseline_summary",
+      "intent_passed": true,
+      "output_digest": "sha256:aea8502a234b2c2e205ae71be61eb92190051817e5ba3c372a91d0d9b435e23e",
+      "passed": true,
+      "project_state_relpath": "workspaces\\ta_weekly_baseline_summary\\case_baseline\\project_state.json",
+      "prompt": "这周完成了 PageIndex 单文档和多文档 baseline 复现，整理了 latency、token、LLM calls 和 tree depth 指标，结果记录在 baseline_comparison.md。下周准备完成图谱抽取工具选型，帮我结合当前项目状态写周报。",
+      "scoring": {
+        "agent_weight": 0.3,
+        "functional_weight": 0.7,
+        "pass_rule": "functional_pass_required"
+      },
+      "status": "pass",
+      "total_score": 1.0
+    },
+    {
+      "actual_intent": "write_weekly_report",
+      "agent_checks": [
+        {
+          "actual": "weekly_report_skill",
+          "detail": "expected=weekly_report_skill, actual=weekly_report_skill",
+          "expected": "weekly_report_skill",
+          "name": "skill_call",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": [
+            "draft_weekly_report",
+            "evaluate_milestone_completion",
+            "mentor_sync_check",
+            "read_daily_history",
+            "read_project_state"
+          ],
+          "detail": "coverage=80.00%, missing=['check_artifact_quality']",
+          "expected": [
+            "check_artifact_quality",
+            "draft_weekly_report",
+            "evaluate_milestone_completion",
+            "mentor_sync_check",
+            "read_project_state"
+          ],
+          "name": "tool_call_coverage",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=True, actual=True",
+          "expected": true,
+          "name": "memory_read",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=True, actual=True",
+          "expected": true,
+          "name": "memory_write",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=True, actual=True",
+          "expected": true,
+          "name": "state_update",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=True, actual=True",
+          "expected": true,
+          "name": "trace",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": 6,
+          "detail": "observed_steps=6, max_steps=10",
+          "expected": 10,
+          "name": "step_budget",
+          "passed": true,
+          "points": 1.0
+        }
+      ],
+      "agent_max_score": 7.0,
+      "agent_raw_score": 7.0,
+      "agent_score": 1.0,
+      "category": "weekly_report_mixed",
+      "covered_functions": [
+        "周报生成",
+        "延期识别",
+        "阻塞识别",
+        "产物质量识别",
+        "导师同步判断",
+        "下周计划"
+      ],
+      "duration_ms": 4.316,
+      "execution_error": "",
+      "execution_succeeded": true,
+      "expected_artifact": "生成规范周报，识别 W3 延期、测试和实验缺口，并建议就节点合并策略与导师同步。",
+      "expected_intent": "write_weekly_report",
+      "failure_category": null,
+      "final_answer": "## 已帮你整理成周报\n\n### 规范周报草稿\n# 周报\n\n## 本周完成\n- 这周 W3 的 G-T Pointer 映射没有按计划完成，连续两天卡在跨文档共现实体的节点合并策略，目前只有设计说明，没有单元测试和实验结果。请帮我生成周报，指出产物质量问题，判断是否需要和导师同步，并给出下周计划。\n\n## 证据\n- 待补充本周产物链接、实验结果或截图。\n\n## 阻塞与风险\n- 跨文档共现实体的节点合并策略\n\n## 里程碑\n- 根据项目状态表更新当前里程碑完成情况。\n\n## 下周计划\n- 计划\n\n### Agent 分析\n## 周报评估\n- 覆盖天数: 3\n- 本周完成事项: 4 项\n- 里程碑完成度: 0.26\n- 风险统计:\n- blocker: 2 次\n- schedule_delay: 1 次\n- 重复风险: blocker\n- 导师同步状态: ESCALATE\n- 下周计划:\n- 先完成召回优先版本，补齐 get_nodes_by_entity 的单元测试，再和导师确认精排策略。\n- 补齐 G-T Pointer 多对多映射单元测试\n- 处理同一实体跨多个子树的边界 case",
+      "fixture_case": "samples/case_mapping_delay",
+      "fixture_copy_relpath": "workspaces\\ta_weekly_mixed_delay_quality_mentor\\case_mapping_delay",
+      "functional_checks": [
+        {
+          "actual": true,
+          "detail": "actual=True",
+          "expected": true,
+          "name": "execution_succeeded",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "actual=True",
+          "expected": true,
+          "name": "intent_passed",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": [],
+          "detail": "all present",
+          "expected": [
+            "本周完成",
+            "证据",
+            "阻塞与风险",
+            "里程碑",
+            "下周计划"
+          ],
+          "name": "required_sections",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": 1.0,
+          "detail": "coverage=100.00%, missing=[]",
+          "expected": 0.8,
+          "name": "keyword_coverage",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=True, actual=True",
+          "expected": true,
+          "name": "mentor_sync_required",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=True, actual=True",
+          "expected": true,
+          "name": "blocker_detected",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=True, actual=True",
+          "expected": true,
+          "name": "quality_gap_detected",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=True, actual=True",
+          "expected": true,
+          "name": "schedule_delay_detected",
+          "passed": true,
+          "points": 1.0
+        }
+      ],
+      "functional_max_score": 8.0,
+      "functional_passed": true,
+      "functional_raw_score": 8.0,
+      "functional_score": 1.0,
+      "id": "ta_weekly_mixed_delay_quality_mentor",
+      "intent_passed": true,
+      "output_digest": "sha256:4c09ba2d33f76e1f17b33087b906b181a28a05b9a432408aedf116c967637eb5",
+      "passed": true,
+      "project_state_relpath": "workspaces\\ta_weekly_mixed_delay_quality_mentor\\case_mapping_delay\\project_state.json",
+      "prompt": "这周 W3 的 G-T Pointer 映射没有按计划完成，连续两天卡在跨文档共现实体的节点合并策略，目前只有设计说明，没有单元测试和实验结果。请帮我生成周报，指出产物质量问题，判断是否需要和导师同步，并给出下周计划。",
+      "scoring": {
+        "agent_weight": 0.3,
+        "functional_weight": 0.7,
+        "pass_rule": "functional_pass_required"
+      },
+      "status": "pass",
+      "total_score": 1.0
+    },
+    {
+      "actual_intent": "decompose_plan",
+      "agent_checks": [
+        {
+          "actual": "project_planning_skill",
+          "detail": "expected=project_planning_skill, actual=project_planning_skill",
+          "expected": "project_planning_skill",
+          "name": "skill_call",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": [
+            "decompose_milestones",
+            "generate_acceptance_criteria",
+            "read_project_document"
+          ],
+          "detail": "coverage=75.00%, missing=['write_project_state']",
+          "expected": [
+            "decompose_milestones",
+            "generate_acceptance_criteria",
+            "read_project_document",
+            "write_project_state"
+          ],
+          "name": "tool_call_coverage",
+          "passed": false,
+          "points": 1.0
+        },
+        {
+          "actual": false,
+          "detail": "expected=False, actual=False",
+          "expected": false,
+          "name": "memory_read",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=True, actual=True",
+          "expected": true,
+          "name": "memory_write",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": false,
+          "detail": "expected=True, actual=False",
+          "expected": true,
+          "name": "state_update",
+          "passed": false,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=True, actual=True",
+          "expected": true,
+          "name": "trace",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": 4,
+          "detail": "observed_steps=4, max_steps=10",
+          "expected": 10,
+          "name": "step_budget",
+          "passed": true,
+          "points": 1.0
+        }
+      ],
+      "agent_max_score": 7.0,
+      "agent_raw_score": 5.0,
+      "agent_score": 0.7142857142857143,
+      "category": "project_plan_decomposition",
+      "covered_functions": [
+        "项目目标理解",
+        "八周计划拆解",
+        "里程碑规划",
+        "重难点识别",
+        "验收标准生成"
+      ],
+      "duration_ms": 2.421,
+      "execution_error": "",
+      "execution_succeeded": true,
+      "expected_artifact": "生成完整的 8 周项目计划，每周包含目标、任务、重难点和可验收产物。",
+      "expected_intent": "decompose_plan",
+      "failure_category": null,
+      "final_answer": "## 8 周项目计划拆解\n\n- 原始目标: 请根据项目目标“面向金融文档撰写 Agent 的非向量化知识库构建与可追溯检索能力升级”，帮我拆成 8 周计划。每周需要包含目标、主要任务、重难点和可验收产物。\n- 重难点: 金融文档图谱抽取质量、G-T Pointer 可追溯映射、树剪枝效率、实验可验证性。\n\n### W1\n- 目标: 理解项目目标与复现 PageIndex baseline\n- 任务: 阅读项目文档；跑通单文档/多文档 baseline；记录 latency、token、LLM calls、tree depth\n- 可验收产物: baseline 复现记录和指标表\n\n### W2\n- 目标: 完成图谱工具选型\n- 任务: 调研 GBrain、Cognee 等图谱抽取方案；比较金融文档实体粒度和关系质量\n- 可验收产物: 图谱工具对比表和选型结论\n\n### W3\n- 目标: 设计 G-T Pointer 映射\n- 任务: 设计 entity_id 到 tree_node_ids 的映射结构；补充 get_nodes_by_entity 测试\n- 可验收产物: G-T Pointer 设计文档和单元测试\n\n### W4\n- 目标: 实现可追溯检索链路\n- 任务: 串联图谱节点、原文片段和树节点；输出可追溯证据路径\n- 可验收产物: 可追溯检索 demo 和示例结果\n\n### W5\n- 目标: 优化树剪枝与检索效率\n- 任务: 设计树剪枝策略；对比剪枝前后的 latency、token 和命中质量\n- 可验收产物: 树剪枝实验结果\n\n### W6\n- 目标: 完成金融文档实验\n- 任务: 构造多组金融文档 case；评估图谱质量、检索准确性和可解释性\n- 可验收产物: 实验记录和误差分析\n\n### W7\n- 目标: 整理系统能力与风险\n- 任务: 总结 Agent 写作链路、非向量化知识库能力、失败 case 和改进方向\n- 可验收产物: 阶段报告初稿\n\n### W8\n- 目标: 完成最终报告与演示\n- 任务: 整理代码、实验、报告和演示材料；明确验收标准和后续优化点\n- 可验收产物: 最终报告、演示视频和验收清单",
+      "fixture_case": "samples/project_plan.json",
+      "fixture_copy_relpath": "workspaces\\ta_project_plan_decomposition_8_weeks\\project_plan.json",
+      "functional_checks": [
+        {
+          "actual": true,
+          "detail": "actual=True",
+          "expected": true,
+          "name": "execution_succeeded",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "actual=True",
+          "expected": true,
+          "name": "intent_passed",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": 1.0,
+          "detail": "coverage=100.00%, missing=[]",
+          "expected": 0.8,
+          "name": "keyword_coverage",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": {
+            "missing_fields": [],
+            "weeks": 8
+          },
+          "detail": "weeks=8/8, missing_fields=[]",
+          "expected": {
+            "fields": [
+              "目标",
+              "任务",
+              "可验收产物"
+            ],
+            "weeks": 8
+          },
+          "name": "weekly_plan_structure",
+          "passed": true,
+          "points": 1.0
+        }
+      ],
+      "functional_max_score": 4.0,
+      "functional_passed": true,
+      "functional_raw_score": 4.0,
+      "functional_score": 1.0,
+      "id": "ta_project_plan_decomposition_8_weeks",
+      "intent_passed": true,
+      "output_digest": "sha256:86328cf7d9579582d1b681d4d722e9e657791ab764d764d6a51498e0b728934a",
+      "passed": true,
+      "project_state_relpath": "workspaces\\ta_project_plan_decomposition_8_weeks\\project_state.json",
+      "prompt": "请根据项目目标“面向金融文档撰写 Agent 的非向量化知识库构建与可追溯检索能力升级”，帮我拆成 8 周计划。每周需要包含目标、主要任务、重难点和可验收产物。",
+      "scoring": {
+        "agent_weight": 0.3,
+        "functional_weight": 0.7,
+        "pass_rule": "functional_pass_required"
+      },
+      "status": "pass",
+      "total_score": 0.9142857142857143
+    },
+    {
+      "actual_intent": "query_progress",
+      "agent_checks": [
+        {
+          "actual": "progress_query_skill",
+          "detail": "expected=progress_query_skill, actual=progress_query_skill",
+          "expected": "progress_query_skill",
+          "name": "skill_call",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": [
+            "compute_milestone_completion",
+            "read_project_state",
+            "render_progress_summary"
+          ],
+          "detail": "coverage=100.00%, missing=[]",
+          "expected": [
+            "compute_milestone_completion",
+            "read_project_state",
+            "render_progress_summary"
+          ],
+          "name": "tool_call_coverage",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=True, actual=True",
+          "expected": true,
+          "name": "memory_read",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=False, actual=True",
+          "expected": false,
+          "name": "memory_write",
+          "passed": false,
+          "points": 1.0
+        },
+        {
+          "actual": false,
+          "detail": "expected=False, actual=False",
+          "expected": false,
+          "name": "state_update",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=True, actual=True",
+          "expected": true,
+          "name": "trace",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": 4,
+          "detail": "observed_steps=4, max_steps=5",
+          "expected": 5,
+          "name": "step_budget",
+          "passed": true,
+          "points": 1.0
+        }
+      ],
+      "agent_max_score": 7.0,
+      "agent_raw_score": 6.0,
+      "agent_score": 0.8571428571428571,
+      "category": "project_progress_query",
+      "covered_functions": [
+        "项目状态读取",
+        "加权进度计算",
+        "里程碑状态展示"
+      ],
+      "duration_ms": 3.102,
+      "execution_error": "",
+      "execution_succeeded": true,
+      "expected_artifact": "根据里程碑权重和进度计算总体完成度，并列出已完成、进行中和未完成任务。",
+      "expected_intent": "query_progress",
+      "failure_category": null,
+      "final_answer": "## 当前任务完成度\n\n- 总体完成度: 8.00%\n- W1 环境搭建与基线复现: 80%，状态 进行中\n- W2 图谱抽取方案设计与选型验证: 0%，状态 未完成\n- W3 G-T Pointer 映射机制实现: 0%，状态 未完成\n- W4 图谱预激活与树剪枝算法实现: 0%，状态 未完成\n- W5 算法调优与消融实验设计: 0%，状态 未完成\n- W6 全面对比实验与指标采集: 0%，状态 未完成\n- W7 问题排查、效果打磨与鲁棒性测试: 0%，状态 未完成\n- W8 成果提炼与汇报材料产出: 0%，状态 未完成",
+      "fixture_case": "samples/case_baseline",
+      "fixture_copy_relpath": "workspaces\\ta_query_progress_normal\\case_baseline",
+      "functional_checks": [
+        {
+          "actual": true,
+          "detail": "actual=True",
+          "expected": true,
+          "name": "execution_succeeded",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "actual=True",
+          "expected": true,
+          "name": "intent_passed",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": 1.0,
+          "detail": "coverage=100.00%, missing=[]",
+          "expected": 0.8,
+          "name": "keyword_coverage",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "actual=True",
+          "expected": true,
+          "name": "project_state_used",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": 0.08,
+          "detail": "expected=0.080, actual=0.08, tolerance=0.001",
+          "expected": 0.08,
+          "name": "completion_value",
+          "passed": true,
+          "points": 1.0
+        }
+      ],
+      "functional_max_score": 5.0,
+      "functional_passed": true,
+      "functional_raw_score": 5.0,
+      "functional_score": 1.0,
+      "id": "ta_query_progress_normal",
+      "intent_passed": true,
+      "output_digest": "sha256:2fe385f239896dcfe0067f9294496b910795f2ffbc7157baa5daf39c5362437e",
+      "passed": true,
+      "project_state_relpath": "workspaces\\ta_query_progress_normal\\case_baseline\\project_state.json",
+      "prompt": "请读取当前项目状态，告诉我项目总体完成百分之多少，并分别说明已经完成、正在进行和还没有完成的里程碑。",
+      "scoring": {
+        "agent_weight": 0.3,
+        "functional_weight": 0.7,
+        "pass_rule": "functional_pass_required"
+      },
+      "status": "pass",
+      "total_score": 0.9571428571428571
+    },
+    {
+      "actual_intent": "query_progress",
+      "agent_checks": [
+        {
+          "actual": "progress_query_skill",
+          "detail": "expected=progress_query_skill, actual=progress_query_skill",
+          "expected": "progress_query_skill",
+          "name": "skill_call",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": [
+            "compute_milestone_completion",
+            "read_project_state",
+            "render_progress_summary"
+          ],
+          "detail": "coverage=50.00%, missing=['compare_expected_progress', 'detect_schedule_delay']",
+          "expected": [
+            "compare_expected_progress",
+            "compute_milestone_completion",
+            "detect_schedule_delay",
+            "read_project_state"
+          ],
+          "name": "tool_call_coverage",
+          "passed": false,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=True, actual=True",
+          "expected": true,
+          "name": "memory_read",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=True, actual=True",
+          "expected": true,
+          "name": "memory_write",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": false,
+          "detail": "expected=False, actual=False",
+          "expected": false,
+          "name": "state_update",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=True, actual=True",
+          "expected": true,
+          "name": "trace",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": 4,
+          "detail": "observed_steps=4, max_steps=7",
+          "expected": 7,
+          "name": "step_budget",
+          "passed": true,
+          "points": 1.0
+        }
+      ],
+      "agent_max_score": 7.0,
+      "agent_raw_score": 6.0,
+      "agent_score": 0.8571428571428571,
+      "category": "project_progress_delay",
+      "covered_functions": [
+        "项目状态读取",
+        "加权进度计算",
+        "预期进度对比",
+        "延期里程碑识别"
+      ],
+      "duration_ms": 2.952,
+      "execution_error": "",
+      "execution_succeeded": true,
+      "expected_artifact": "输出实际完成度和预期进度，识别 W3 已到期未完成，并给出优先任务。",
+      "expected_intent": "query_progress",
+      "failure_category": "functional_verifier_failed",
+      "final_answer": "## 当前任务完成度\n\n- 总体完成度: 26.00%\n- W1 环境搭建与基线复现: 100%，状态 已完成\n- W2 图谱抽取方案设计与选型验证: 100%，状态 已完成\n- W3 G-T Pointer 映射机制实现: 40%，状态 进行中\n- W4 图谱预激活与树剪枝算法实现: 0%，状态 未完成\n- W5 算法调优与消融实验设计: 0%，状态 未完成\n- W6 全面对比实验与指标采集: 0%，状态 未完成\n- W7 问题排查、效果打磨与鲁棒性测试: 0%，状态 未完成\n- W8 成果提炼与汇报材料产出: 0%，状态 未完成",
+      "fixture_case": "samples/case_mapping_delay",
+      "fixture_copy_relpath": "workspaces\\ta_query_progress_with_delay\\case_mapping_delay",
+      "functional_checks": [
+        {
+          "actual": true,
+          "detail": "actual=True",
+          "expected": true,
+          "name": "execution_succeeded",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "actual=True",
+          "expected": true,
+          "name": "intent_passed",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": 1.0,
+          "detail": "coverage=100.00%, missing=[]",
+          "expected": 0.8,
+          "name": "keyword_coverage",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=True, actual=True",
+          "expected": true,
+          "name": "schedule_delay_detected",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "actual=True",
+          "expected": true,
+          "name": "project_state_used",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": 0.26,
+          "detail": "expected=0.260, actual=0.26, tolerance=0.001",
+          "expected": 0.26,
+          "name": "completion_value",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": false,
+          "detail": "expected progress 35% must be shown",
+          "expected": "35%",
+          "name": "expected_progress_comparison",
+          "passed": false,
+          "points": 1.0
+        }
+      ],
+      "functional_max_score": 7.0,
+      "functional_passed": false,
+      "functional_raw_score": 6.0,
+      "functional_score": 0.8571428571428571,
+      "id": "ta_query_progress_with_delay",
+      "intent_passed": true,
+      "output_digest": "sha256:7728a77ffcbf6f0660a504c58c51f6ded21d8f313ea91367b42e62e779aec2d1",
+      "passed": false,
+      "project_state_relpath": "workspaces\\ta_query_progress_with_delay\\case_mapping_delay\\project_state.json",
+      "prompt": "W3 已经到期但还没有完成。请结合当前项目状态计算实际完成度，和预期进度比较，并告诉我延期的是哪个里程碑以及接下来应该优先完成什么。",
+      "scoring": {
+        "agent_weight": 0.3,
+        "functional_weight": 0.7,
+        "pass_rule": "functional_pass_required"
+      },
+      "status": "fail",
+      "total_score": 0.8571428571428571
+    },
+    {
+      "actual_intent": "query_mentor_sync",
+      "agent_checks": [
+        {
+          "actual": "mentor_sync_skill",
+          "detail": "expected=mentor_sync_skill, actual=mentor_sync_skill",
+          "expected": "mentor_sync_skill",
+          "name": "skill_call",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": [
+            "mentor_sync_check",
+            "read_project_state",
+            "read_recent_blockers",
+            "render_mentor_suggestion"
+          ],
+          "detail": "coverage=100.00%, missing=[]",
+          "expected": [
+            "mentor_sync_check",
+            "read_project_state",
+            "read_recent_blockers",
+            "render_mentor_suggestion"
+          ],
+          "name": "tool_call_coverage",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=True, actual=True",
+          "expected": true,
+          "name": "memory_read",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=True, actual=True",
+          "expected": true,
+          "name": "memory_write",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=True, actual=True",
+          "expected": true,
+          "name": "state_update",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=True, actual=True",
+          "expected": true,
+          "name": "trace",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": 5,
+          "detail": "observed_steps=5, max_steps=7",
+          "expected": 7,
+          "name": "step_budget",
+          "passed": true,
+          "points": 1.0
+        }
+      ],
+      "agent_max_score": 7.0,
+      "agent_raw_score": 7.0,
+      "agent_score": 1.0,
+      "category": "mentor_sync_required",
+      "covered_functions": [
+        "连续阻塞识别",
+        "导师同步周期检查",
+        "导师同步建议"
+      ],
+      "duration_ms": 3.542,
+      "execution_error": "",
+      "execution_succeeded": true,
+      "expected_artifact": "判断当前需要导师同步，并给出触发原因以及建议讨论的实体粒度标准问题。",
+      "expected_intent": "query_mentor_sync",
+      "failure_category": null,
+      "final_answer": "## 导师同步建议\n\n- 当前状态: ESCALATE\n- 建议: 建议尽快找导师讨论，优先确认阻塞和里程碑风险。\n\n### 触发原因\n- 连续 2 天出现明确阻塞\n- 超过 2 天没有导师同步\n- 周报完成度低于预期进度\n- 实习生主动请求导师帮助",
+      "fixture_case": "samples/case_graph_blocked",
+      "fixture_copy_relpath": "workspaces\\ta_mentor_sync_required\\case_graph_blocked",
+      "functional_checks": [
+        {
+          "actual": true,
+          "detail": "actual=True",
+          "expected": true,
+          "name": "execution_succeeded",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "actual=True",
+          "expected": true,
+          "name": "intent_passed",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": 1.0,
+          "detail": "coverage=100.00%, missing=[]",
+          "expected": 0.8,
+          "name": "keyword_coverage",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=True, actual=True",
+          "expected": true,
+          "name": "mentor_sync_required",
+          "passed": true,
+          "points": 1.0
+        }
+      ],
+      "functional_max_score": 4.0,
+      "functional_passed": true,
+      "functional_raw_score": 4.0,
+      "functional_score": 1.0,
+      "id": "ta_mentor_sync_required",
+      "intent_passed": true,
+      "output_digest": "sha256:a5ccc6f9b13d8080e4f04e6f7e4f51eced708a8a2c0a98eb3e651b509686eb3e",
+      "passed": true,
+      "project_state_relpath": "workspaces\\ta_mentor_sync_required\\case_graph_blocked\\project_state.json",
+      "prompt": "我连续两天都卡在金融文档实体抽取粒度标准，而且已经超过两天没有和导师同步了。请结合项目状态判断我现在是否应该找导师讨论，并说明需要和导师确认什么。",
+      "scoring": {
+        "agent_weight": 0.3,
+        "functional_weight": 0.7,
+        "pass_rule": "functional_pass_required"
+      },
+      "status": "pass",
+      "total_score": 1.0
+    },
+    {
+      "actual_intent": "query_mentor_sync",
+      "agent_checks": [
+        {
+          "actual": "mentor_sync_skill",
+          "detail": "expected=mentor_sync_skill, actual=mentor_sync_skill",
+          "expected": "mentor_sync_skill",
+          "name": "skill_call",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": [
+            "mentor_sync_check",
+            "read_project_state",
+            "read_recent_blockers",
+            "render_mentor_suggestion"
+          ],
+          "detail": "coverage=100.00%, missing=[]",
+          "expected": [
+            "mentor_sync_check",
+            "read_project_state",
+            "render_mentor_suggestion"
+          ],
+          "name": "tool_call_coverage",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=True, actual=True",
+          "expected": true,
+          "name": "memory_read",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=False, actual=True",
+          "expected": false,
+          "name": "memory_write",
+          "passed": false,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=False, actual=True",
+          "expected": false,
+          "name": "state_update",
+          "passed": false,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=True, actual=True",
+          "expected": true,
+          "name": "trace",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": 5,
+          "detail": "observed_steps=5, max_steps=5",
+          "expected": 5,
+          "name": "step_budget",
+          "passed": true,
+          "points": 1.0
+        }
+      ],
+      "agent_max_score": 7.0,
+      "agent_raw_score": 5.0,
+      "agent_score": 0.7142857142857143,
+      "category": "mentor_sync_not_required",
+      "covered_functions": [
+        "导师同步周期检查",
+        "无阻塞状态识别",
+        "避免过度提醒"
+      ],
+      "duration_ms": 3.993,
+      "execution_error": "",
+      "execution_succeeded": true,
+      "expected_artifact": "判断当前不需要额外导师同步，并建议保持正常同步节奏。",
+      "expected_intent": "query_mentor_sync",
+      "failure_category": null,
+      "final_answer": "## 导师同步建议\n\n- 当前状态: OK\n- 建议: 当前不需要额外同步，保持正常节奏即可。\n\n### 触发原因\n- 暂无",
+      "fixture_case": "samples/case_baseline",
+      "fixture_copy_relpath": "workspaces\\ta_mentor_sync_not_required\\case_baseline",
+      "functional_checks": [
+        {
+          "actual": true,
+          "detail": "actual=True",
+          "expected": true,
+          "name": "execution_succeeded",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "actual=True",
+          "expected": true,
+          "name": "intent_passed",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": 1.0,
+          "detail": "coverage=100.00%, missing=[]",
+          "expected": 0.8,
+          "name": "keyword_coverage",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": false,
+          "detail": "expected=False, actual=False",
+          "expected": false,
+          "name": "mentor_sync_required",
+          "passed": true,
+          "points": 1.0
+        }
+      ],
+      "functional_max_score": 4.0,
+      "functional_passed": true,
+      "functional_raw_score": 4.0,
+      "functional_score": 1.0,
+      "id": "ta_mentor_sync_not_required",
+      "intent_passed": true,
+      "output_digest": "sha256:2f1dfef99c1a7911c736b1c2ecd7ba0abb8f1c7dac2e6ac39554f6c23910e63a",
+      "passed": true,
+      "project_state_relpath": "workspaces\\ta_mentor_sync_not_required\\case_baseline\\project_state.json",
+      "prompt": "当前任务没有明确阻塞，W1 按计划推进，而且昨天刚和导师同步过。请结合项目状态判断今天是否还需要额外联系导师。",
+      "scoring": {
+        "agent_weight": 0.3,
+        "functional_weight": 0.7,
+        "pass_rule": "functional_pass_required"
+      },
+      "status": "pass",
+      "total_score": 0.9142857142857143
+    },
+    {
+      "actual_intent": "review_artifact_quality",
+      "agent_checks": [
+        {
+          "actual": "artifact_quality_skill",
+          "detail": "expected=artifact_quality_skill, actual=artifact_quality_skill",
+          "expected": "artifact_quality_skill",
+          "name": "skill_call",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": [
+            "check_evidence_coverage",
+            "parse_work_record",
+            "render_quality_feedback"
+          ],
+          "detail": "coverage=100.00%, missing=[]",
+          "expected": [
+            "check_evidence_coverage",
+            "parse_work_record",
+            "render_quality_feedback"
+          ],
+          "name": "tool_call_coverage",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": false,
+          "detail": "expected=False, actual=False",
+          "expected": false,
+          "name": "memory_read",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=True, actual=True",
+          "expected": true,
+          "name": "memory_write",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": false,
+          "detail": "expected=False, actual=False",
+          "expected": false,
+          "name": "state_update",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=True, actual=True",
+          "expected": true,
+          "name": "trace",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": 4,
+          "detail": "observed_steps=4, max_steps=5",
+          "expected": 5,
+          "name": "step_budget",
+          "passed": true,
+          "points": 1.0
+        }
+      ],
+      "agent_max_score": 7.0,
+      "agent_raw_score": 7.0,
+      "agent_score": 1.0,
+      "category": "artifact_quality_review",
+      "covered_functions": [
+        "产物质量检查",
+        "证据缺口识别",
+        "禁止虚构证据",
+        "补充材料建议"
+      ],
+      "duration_ms": 2.809,
+      "execution_error": "",
+      "execution_succeeded": true,
+      "expected_artifact": "指出工作描述缺少可验证证据，并建议补充文件、截图、实验结果、提交记录或任务状态。",
+      "expected_intent": "review_artifact_quality",
+      "failure_category": null,
+      "final_answer": "## 产物质量检查\n\n- 判断: 需要补充证据\n- 原始描述: 请检查下面这段工作记录的产物质量：今天继续推进图谱抽取，整体进展正常。除此之外没有提供文件、截图、实验结果、提交记录或任务状态。\n\n### 发现的问题\n- 补充文件、截图、实验结果、提交记录或任务状态。\n\n### 下一步建议\n- 将“完成声明”对应到可验证产物，避免只有描述没有证据。",
+      "fixture_case": "samples/case_graph_blocked",
+      "fixture_copy_relpath": "workspaces\\ta_quality_missing_evidence\\case_graph_blocked",
+      "functional_checks": [
+        {
+          "actual": true,
+          "detail": "actual=True",
+          "expected": true,
+          "name": "execution_succeeded",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "actual=True",
+          "expected": true,
+          "name": "intent_passed",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": 1.0,
+          "detail": "coverage=100.00%, missing=[]",
+          "expected": 0.8,
+          "name": "keyword_coverage",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=True, actual=True",
+          "expected": true,
+          "name": "evidence_gap_detected",
+          "passed": true,
+          "points": 1.0
+        }
+      ],
+      "functional_max_score": 4.0,
+      "functional_passed": true,
+      "functional_raw_score": 4.0,
+      "functional_score": 1.0,
+      "id": "ta_quality_missing_evidence",
+      "intent_passed": true,
+      "output_digest": "sha256:fded0a7367415531ca6ea8a70cb78b91ca241886bb9141a7efa4726d8e948004",
+      "passed": true,
+      "project_state_relpath": "workspaces\\ta_quality_missing_evidence\\case_graph_blocked\\project_state.json",
+      "prompt": "请检查下面这段工作记录的产物质量：今天继续推进图谱抽取，整体进展正常。除此之外没有提供文件、截图、实验结果、提交记录或任务状态。",
+      "scoring": {
+        "agent_weight": 0.3,
+        "functional_weight": 0.7,
+        "pass_rule": "functional_pass_required"
+      },
+      "status": "pass",
+      "total_score": 1.0
+    },
+    {
+      "actual_intent": "review_artifact_quality",
+      "agent_checks": [
+        {
+          "actual": "artifact_quality_skill",
+          "detail": "expected=artifact_quality_skill, actual=artifact_quality_skill",
+          "expected": "artifact_quality_skill",
+          "name": "skill_call",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": [
+            "check_evidence_coverage",
+            "parse_work_record",
+            "render_quality_feedback"
+          ],
+          "detail": "coverage=50.00%, missing=['check_acceptance_evidence', 'check_test_coverage']",
+          "expected": [
+            "check_acceptance_evidence",
+            "check_test_coverage",
+            "parse_work_record",
+            "render_quality_feedback"
+          ],
+          "name": "tool_call_coverage",
+          "passed": false,
+          "points": 1.0
+        },
+        {
+          "actual": false,
+          "detail": "expected=False, actual=False",
+          "expected": false,
+          "name": "memory_read",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=True, actual=True",
+          "expected": true,
+          "name": "memory_write",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": false,
+          "detail": "expected=False, actual=False",
+          "expected": false,
+          "name": "state_update",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=True, actual=True",
+          "expected": true,
+          "name": "trace",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": 4,
+          "detail": "observed_steps=4, max_steps=6",
+          "expected": 6,
+          "name": "step_budget",
+          "passed": true,
+          "points": 1.0
+        }
+      ],
+      "agent_max_score": 7.0,
+      "agent_raw_score": 6.0,
+      "agent_score": 0.8571428571428571,
+      "category": "artifact_quality_review",
+      "covered_functions": [
+        "产物质量检查",
+        "完成声明验证",
+        "测试缺口识别",
+        "验收缺口识别"
+      ],
+      "duration_ms": 2.726,
+      "execution_error": "",
+      "execution_succeeded": true,
+      "expected_artifact": "判断该模块暂时不能视为可验收完成，并列出单元测试、边界 case、实验结果和验收记录缺口。",
+      "expected_intent": "review_artifact_quality",
+      "failure_category": null,
+      "final_answer": "## 产物质量检查\n\n- 判断: 不能视为完成\n- 原始描述: 请检查这项产物是否真的可以算完成：G-T Pointer 映射模块已经写完，目前只有代码文件，没有单元测试、跨文档边界 case、实验结果和验收记录。\n\n### 发现的问题\n- 补充单元测试、跨文档边界 case、实验结果和验收记录。\n\n### 下一步建议\n- 将“完成声明”对应到可验证产物，避免只有描述没有证据。",
+      "fixture_case": "samples/case_mapping_delay",
+      "fixture_copy_relpath": "workspaces\\ta_quality_missing_tests_and_acceptance\\case_mapping_delay",
+      "functional_checks": [
+        {
+          "actual": true,
+          "detail": "actual=True",
+          "expected": true,
+          "name": "execution_succeeded",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "actual=True",
+          "expected": true,
+          "name": "intent_passed",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": 1.0,
+          "detail": "coverage=100.00%, missing=[]",
+          "expected": 0.8,
+          "name": "keyword_coverage",
+          "passed": true,
+          "points": 1.0
+        },
+        {
+          "actual": true,
+          "detail": "expected=True, actual=True",
+          "expected": true,
+          "name": "quality_gap_detected",
+          "passed": true,
+          "points": 1.0
+        }
+      ],
+      "functional_max_score": 4.0,
+      "functional_passed": true,
+      "functional_raw_score": 4.0,
+      "functional_score": 1.0,
+      "id": "ta_quality_missing_tests_and_acceptance",
+      "intent_passed": true,
+      "output_digest": "sha256:dfd1e2767265af11695f9c12edef9e8b18690e0509f7fdd88fb41b94d0b1feb6",
+      "passed": true,
+      "project_state_relpath": "workspaces\\ta_quality_missing_tests_and_acceptance\\case_mapping_delay\\project_state.json",
+      "prompt": "请检查这项产物是否真的可以算完成：G-T Pointer 映射模块已经写完，目前只有代码文件，没有单元测试、跨文档边界 case、实验结果和验收记录。",
+      "scoring": {
+        "agent_weight": 0.3,
+        "functional_weight": 0.7,
+        "pass_rule": "functional_pass_required"
+      },
+      "status": "pass",
+      "total_score": 0.9571428571428571
+    }
+  ],
+  "runtime": {
+    "branch": "duyu-dev",
+    "commit_sha": "817b8758e78083f60bfdf19de015136222d9d3a3",
+    "working_tree_dirty": true
+  },
+  "schema_version": 3,
+  "success_definition": {
+    "functional_passed": "execution_succeeded AND intent_passed AND all functional checks passed",
+    "task_passed": "functional_passed",
+    "total_score": "functional_score * functional_weight + agent_score * agent_weight"
+  },
+  "summary": {
+    "agent_mechanism_layer": {
+      "agent_average_score": 0.8857142857142858,
+      "check_pass_rate": 0.8857142857142857,
+      "check_passes": 62,
+      "memory_state_correctness": 0.8333333333333334,
+      "skill_call_accuracy": 1.0,
+      "step_budget_rate": 1.0,
+      "tool_call_coverage_rate": 0.7,
+      "total_checks": 70,
+      "trace_completeness": 1.0
+    },
+    "average_total_score": 0.9557142857142857,
+    "execution_success_rate": 1.0,
+    "execution_successes": 10,
+    "failed": 1,
+    "failure_category_counts": {
+      "functional_verifier_failed": 1
+    },
+    "functional_layer": {
+      "check_pass_rate": 0.98,
+      "check_passes": 49,
+      "functional_average_score": 0.9857142857142858,
+      "functional_pass_rate": 0.9,
+      "functional_passes": 9,
+      "intent_accuracy": 1.0,
+      "intent_passes": 10,
+      "total_checks": 50
+    },
+    "pass_rate": 0.9,
+    "passed": 9,
+    "total_tasks": 10
+  }
+}

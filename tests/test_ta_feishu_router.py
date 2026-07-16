@@ -19,6 +19,9 @@ def test_daily_report_message_returns_feishu_card():
     assert payload["intent"] == "write_daily_report"
     assert "日报" in payload["markdown"]
     assert payload["card"]["msg_type"] == "interactive"
+    assert payload["metadata"]["skill_used"] == "daily_report_skill"
+    assert "draft_daily_report" in payload["metadata"]["tools_called"]
+    assert payload["trace"][1]["event"] == "intent_routed"
 
 
 def test_progress_message_uses_project_state():
@@ -37,3 +40,21 @@ def test_mentor_sync_message_returns_suggestion():
     )
     assert payload["intent"] == "query_mentor_sync"
     assert "导师" in payload["markdown"]
+
+
+def test_handle_feishu_text_updates_project_state(tmp_path):
+    state_path = tmp_path / "project_state.json"
+    state_path.write_text(
+        '{"milestones": [], "tasks": [], "mentor_sync": {"days_since_last_sync": 1}}',
+        encoding="utf-8",
+    )
+    payload = handle_feishu_text(
+        "我今天完成了 baseline_results.md，明天继续调研，帮我写日报",
+        board={"milestones": []},
+        project_state_path=str(state_path),
+    )
+    assert payload["intent"] == "write_daily_report"
+    assert payload["metadata"]["state_updates"]
+    assert any(update["update_type"] == "append_daily_report" for update in payload["metadata"]["memory_writes"])
+    assert "reports" in state_path.read_text(encoding="utf-8")
+    assert (tmp_path / "audit_log.jsonl").exists()

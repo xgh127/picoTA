@@ -130,6 +130,7 @@ def build_event_result(
     board: dict | None,
     case_dir: str | None,
     day_index: int,
+    project_state_path: str | None = None,
     send_reply: bool = True,
 ) -> dict:
     if not is_message_event(payload):
@@ -149,7 +150,13 @@ def build_event_result(
     if is_agent_generated_text(text):
         return {"handled": False, "reason": "ignored_agent_generated_text"}
 
-    routed = handle_feishu_text(text, board=board, case_dir=case_dir, day_index=day_index)
+    routed = handle_feishu_text(
+        text,
+        board=board,
+        case_dir=case_dir,
+        day_index=day_index,
+        project_state_path=project_state_path,
+    )
     response: dict[str, Any] | None = None
     send_error: str | None = None
     if send_reply:
@@ -169,6 +176,7 @@ def build_event_result(
         "text": text,
         "intent": routed["intent"],
         "confidence": routed["confidence"],
+        "metadata": routed.get("metadata", {}),
         "sent": bool(send_reply and not send_error),
         "send_error": send_error,
         "response": response,
@@ -226,6 +234,7 @@ class FeishuEventHandler(BaseHTTPRequestHandler):
                 board=getattr(self.server, "board", None),
                 case_dir=getattr(self.server, "case_dir", None),
                 day_index=getattr(self.server, "day_index", 1),
+                project_state_path=getattr(self.server, "project_state_path", None),
                 send_reply=getattr(self.server, "send_reply", True),
             )
         except Exception as exc:  # noqa: BLE001 - return callback error safely
@@ -253,6 +262,7 @@ def run_server(
     server.webhook_url = webhook_url
     server.board = board
     server.case_dir = case_dir
+    server.project_state_path = project_state
     server.verification_token = verification_token
     server.day_index = day_index
     server.send_reply = send_reply

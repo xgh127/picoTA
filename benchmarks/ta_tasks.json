@@ -1,21 +1,51 @@
 {
-  "schema_version": 1,
-  "benchmark_name": "ta_assistant_tasks_v1",
-  "description": "固定的 TA Agent 小样本评测题，用来覆盖飞书入口下的日报生成、周报生成、项目进度查询、导师同步判断和项目计划拆解。",
+  "schema_version": 3,
+  "benchmark_name": "ta_agent_integrated_benchmark_v3",
+  "description": "TA Agent 统一评测集：每道题同时评测功能层结果和 Agent 机制层过程。功能层决定任务是否通过，Agent 机制层用于计算综合分和分析系统工程能力。",
+  "metric_groups": {
+    "functional_layer": [
+      "intent_accuracy",
+      "functional_pass_rate",
+      "functional_average_score",
+      "section_completion_rate",
+      "fact_coverage_rate",
+      "rule_decision_accuracy"
+    ],
+    "agent_mechanism_layer": [
+      "agent_average_score",
+      "skill_call_accuracy",
+      "tool_call_coverage",
+      "memory_state_correctness",
+      "trace_completeness",
+      "step_budget_rate"
+    ]
+  },
+  "task_distribution": {
+    "日报与周报生成": 3,
+    "项目计划拆解": 1,
+    "项目进度查询": 2,
+    "导师同步判断": 2,
+    "产物质量识别": 2
+  },
+  "default_scoring": {
+    "functional_weight": 0.7,
+    "agent_weight": 0.3,
+    "pass_rule": "functional_pass_required"
+  },
   "tasks": [
     {
       "id": "ta_daily_baseline_progress",
       "category": "daily_report",
-      "prompt": "我今天完成了 PageIndex baseline 复现，记录了 latency、token 和 LLM calls，明天准备开始调研 GBrain 和 Cognee，帮我写日报。",
+      "prompt": "我今天完成了 PageIndex baseline 复现，记录了 latency、token 和 LLM calls，产物保存在 baseline_results.md，明天准备开始调研 GBrain 和 Cognee，帮我写日报。",
       "fixture_case": "samples/case_baseline",
       "expected_intent": "write_daily_report",
       "covered_functions": [
         "日报生成",
-        "证据提醒",
+        "证据保留",
         "次日计划"
       ],
-      "expected_artifact": "生成包含今日进展、阻塞、证据、次日计划的规范日报。",
-      "pass_criteria": {
+      "expected_artifact": "生成包含今日进展、阻塞、证据和次日计划的规范日报，并保留用户提供的实验指标与文件名。",
+      "functional_criteria": {
         "required_sections": [
           "今日进展",
           "阻塞",
@@ -28,83 +58,45 @@
           "latency",
           "token",
           "LLM calls",
+          "baseline_results.md",
           "GBrain",
           "Cognee"
         ],
         "mentor_sync_required": false
-      }
-    },
-    {
-      "id": "ta_daily_entity_granularity_blocker",
-      "category": "daily_report_with_blocker",
-      "prompt": "我今天卡在实体抽取粒度标准，不确定公司简称和全称是否要合并，明天准备整理 5 个边界 case，帮我写日报。",
-      "fixture_case": "samples/case_graph_blocked",
-      "expected_intent": "write_daily_report",
-      "covered_functions": [
-        "日报生成",
-        "阻塞识别",
-        "导师同步提醒"
-      ],
-      "expected_artifact": "生成规范日报，并识别实体抽取粒度相关阻塞，建议准备导师同步材料。",
-      "pass_criteria": {
-        "required_sections": [
-          "今日进展",
-          "阻塞",
-          "证据",
-          "次日计划"
+      },
+      "agent_criteria": {
+        "expected_skill": "daily_report_skill",
+        "required_tools": [
+          "read_project_state",
+          "draft_daily_report",
+          "check_evidence_coverage"
         ],
-        "must_include_keywords": [
-          "实体抽取粒度",
-          "公司简称",
-          "全称",
-          "5 个边界 case"
-        ],
-        "blocker_detected": true,
-        "mentor_sync_required": true
-      }
-    },
-    {
-      "id": "ta_daily_gt_pointer_testing_gap",
-      "category": "daily_report_with_quality_gap",
-      "prompt": "我今天完成了 G-T Pointer 的 entity_id 到 tree_node_ids 映射结构设计，但是还没有补单元测试，明天准备写 get_nodes_by_entity 的测试，帮我写日报。",
-      "fixture_case": "samples/case_mapping_delay",
-      "expected_intent": "write_daily_report",
-      "covered_functions": [
-        "日报生成",
-        "质量缺口识别",
-        "次日计划"
-      ],
-      "expected_artifact": "生成规范日报，并提醒补充映射模块单元测试作为可验证产物。",
-      "pass_criteria": {
-        "required_sections": [
-          "今日进展",
-          "阻塞",
-          "证据",
-          "次日计划"
-        ],
-        "must_include_keywords": [
-          "G-T Pointer",
-          "entity_id",
-          "tree_node_ids",
-          "单元测试",
-          "get_nodes_by_entity"
-        ],
-        "quality_gap_detected": true
+        "memory_read_required": false,
+        "memory_write_required": true,
+        "state_update_required": true,
+        "trace_required": true,
+        "max_steps": 6
+      },
+      "scoring": {
+        "functional_weight": 0.7,
+        "agent_weight": 0.3,
+        "pass_rule": "functional_pass_required"
       }
     },
     {
       "id": "ta_weekly_baseline_summary",
       "category": "weekly_report",
-      "prompt": "这周完成了 PageIndex 单文档和多文档基线复现，整理了 latency、token、LLM calls 和 tree depth 指标，下周准备做图谱抽取工具选型，帮我写周报。",
+      "prompt": "这周完成了 PageIndex 单文档和多文档 baseline 复现，整理了 latency、token、LLM calls 和 tree depth 指标，结果记录在 baseline_comparison.md。下周准备完成图谱抽取工具选型，帮我结合当前项目状态写周报。",
       "fixture_case": "samples/case_baseline",
       "expected_intent": "write_weekly_report",
       "covered_functions": [
         "周报生成",
-        "本周完成总结",
+        "证据保留",
+        "里程碑关联",
         "下周计划"
       ],
-      "expected_artifact": "生成包含本周完成、证据、阻塞与风险、里程碑、下周计划的规范周报。",
-      "pass_criteria": {
+      "expected_artifact": "生成包含本周完成、证据、阻塞与风险、里程碑和下周计划的规范周报。",
+      "functional_criteria": {
         "required_sections": [
           "本周完成",
           "证据",
@@ -120,25 +112,47 @@
           "token",
           "LLM calls",
           "tree depth",
-          "图谱抽取"
+          "baseline_comparison.md",
+          "图谱抽取工具选型"
         ],
         "mentor_sync_required": false
+      },
+      "agent_criteria": {
+        "expected_skill": "weekly_report_skill",
+        "required_tools": [
+          "read_project_state",
+          "read_daily_history",
+          "evaluate_milestone_completion",
+          "draft_weekly_report"
+        ],
+        "memory_read_required": true,
+        "memory_write_required": true,
+        "state_update_required": true,
+        "trace_required": true,
+        "max_steps": 8
+      },
+      "scoring": {
+        "functional_weight": 0.7,
+        "agent_weight": 0.3,
+        "pass_rule": "functional_pass_required"
       }
     },
     {
-      "id": "ta_weekly_graph_quality_blocked",
-      "category": "weekly_report_with_blocker",
-      "prompt": "这周主要卡在图谱抽取质量不稳定，GBrain 和 Cognee 对同一批金融文档抽出来的实体粒度不一致，下周想先和导师确认实体边界标准，帮我写周报。",
-      "fixture_case": "samples/case_graph_blocked",
+      "id": "ta_weekly_mixed_delay_quality_mentor",
+      "category": "weekly_report_mixed",
+      "prompt": "这周 W3 的 G-T Pointer 映射没有按计划完成，连续两天卡在跨文档共现实体的节点合并策略，目前只有设计说明，没有单元测试和实验结果。请帮我生成周报，指出产物质量问题，判断是否需要和导师同步，并给出下周计划。",
+      "fixture_case": "samples/case_mapping_delay",
       "expected_intent": "write_weekly_report",
       "covered_functions": [
         "周报生成",
+        "延期识别",
         "阻塞识别",
-        "导师同步提醒",
+        "产物质量识别",
+        "导师同步判断",
         "下周计划"
       ],
-      "expected_artifact": "生成规范周报，并判断图谱抽取质量问题需要导师同步。",
-      "pass_criteria": {
+      "expected_artifact": "生成规范周报，识别 W3 延期、测试和实验缺口，并建议就节点合并策略与导师同步。",
+      "functional_criteria": {
         "required_sections": [
           "本周完成",
           "证据",
@@ -147,31 +161,55 @@
           "下周计划"
         ],
         "must_include_keywords": [
-          "图谱抽取质量",
-          "GBrain",
-          "Cognee",
-          "金融文档",
-          "实体粒度",
-          "导师",
-          "实体边界标准"
+          "W3",
+          "G-T Pointer",
+          "跨文档共现实体",
+          "节点合并策略",
+          "单元测试",
+          "实验结果",
+          "导师"
         ],
         "blocker_detected": true,
+        "quality_gap_detected": true,
+        "schedule_delay_detected": true,
         "mentor_sync_required": true
+      },
+      "agent_criteria": {
+        "expected_skill": "weekly_report_skill",
+        "required_tools": [
+          "read_project_state",
+          "evaluate_milestone_completion",
+          "check_artifact_quality",
+          "mentor_sync_check",
+          "draft_weekly_report"
+        ],
+        "memory_read_required": true,
+        "memory_write_required": true,
+        "state_update_required": true,
+        "trace_required": true,
+        "max_steps": 10
+      },
+      "scoring": {
+        "functional_weight": 0.7,
+        "agent_weight": 0.3,
+        "pass_rule": "functional_pass_required"
       }
     },
     {
       "id": "ta_project_plan_decomposition_8_weeks",
       "category": "project_plan_decomposition",
-      "prompt": "请根据我的项目目标“面向金融文档撰写 Agent 的非向量化知识库构建与可追溯检索能力升级”，帮我拆成 8 周计划，每周给出目标、任务和可验收产物。",
+      "prompt": "请根据项目目标“面向金融文档撰写 Agent 的非向量化知识库构建与可追溯检索能力升级”，帮我拆成 8 周计划。每周需要包含目标、主要任务、重难点和可验收产物。",
       "fixture_case": "samples/project_plan.json",
       "expected_intent": "decompose_plan",
       "covered_functions": [
-        "项目计划拆解",
+        "项目目标理解",
+        "八周计划拆解",
         "里程碑规划",
+        "重难点识别",
         "验收标准生成"
       ],
-      "expected_artifact": "生成 8 周项目计划，每周包含目标、任务、产物和验收标准。",
-      "pass_criteria": {
+      "expected_artifact": "生成完整的 8 周项目计划，每周包含目标、任务、重难点和可验收产物。",
+      "functional_criteria": {
         "required_weeks": 8,
         "required_fields_per_week": [
           "目标",
@@ -186,21 +224,42 @@
           "实验",
           "报告"
         ]
+      },
+      "agent_criteria": {
+        "expected_skill": "project_planning_skill",
+        "required_tools": [
+          "read_project_document",
+          "decompose_milestones",
+          "generate_acceptance_criteria",
+          "write_project_state"
+        ],
+        "memory_read_required": false,
+        "memory_write_required": true,
+        "state_update_required": true,
+        "trace_required": true,
+        "max_steps": 10
+      },
+      "scoring": {
+        "functional_weight": 0.7,
+        "agent_weight": 0.3,
+        "pass_rule": "functional_pass_required"
       }
     },
     {
-      "id": "ta_query_project_progress",
+      "id": "ta_query_progress_normal",
       "category": "project_progress_query",
-      "prompt": "我现在项目完成百分之多少了？请结合当前里程碑状态告诉我整体进度，以及哪些任务还没完成。",
-      "fixture_case": "samples/case_graph_blocked",
+      "prompt": "请读取当前项目状态，告诉我项目总体完成百分之多少，并分别说明已经完成、正在进行和还没有完成的里程碑。",
+      "fixture_case": "samples/case_baseline",
       "expected_intent": "query_progress",
       "covered_functions": [
-        "任务完成度查询",
-        "里程碑状态读取",
-        "未完成任务提示"
+        "项目状态读取",
+        "加权进度计算",
+        "里程碑状态展示"
       ],
-      "expected_artifact": "返回整体完成度百分比，并列出已完成、进行中和未完成里程碑。",
-      "pass_criteria": {
+      "expected_artifact": "根据里程碑权重和进度计算总体完成度，并列出已完成、进行中和未完成任务。",
+      "functional_criteria": {
+        "expected_completion": 0.08,
+        "completion_tolerance": 0.001,
         "must_include_keywords": [
           "总体完成度",
           "W1",
@@ -209,86 +268,239 @@
           "未完成"
         ],
         "must_use_project_state": true
+      },
+      "agent_criteria": {
+        "expected_skill": "progress_query_skill",
+        "required_tools": [
+          "read_project_state",
+          "compute_milestone_completion",
+          "render_progress_summary"
+        ],
+        "memory_read_required": true,
+        "memory_write_required": false,
+        "state_update_required": false,
+        "trace_required": true,
+        "max_steps": 5
+      },
+      "scoring": {
+        "functional_weight": 0.7,
+        "agent_weight": 0.3,
+        "pass_rule": "functional_pass_required"
       }
     },
     {
-      "id": "ta_query_mentor_sync_time",
-      "category": "mentor_sync_query",
-      "prompt": "我下次什么时候应该找导师讨论？请结合最近几天的阻塞、导师同步时间和里程碑进度判断。",
+      "id": "ta_query_progress_with_delay",
+      "category": "project_progress_delay",
+      "prompt": "W3 已经到期但还没有完成。请结合当前项目状态计算实际完成度，和预期进度比较，并告诉我延期的是哪个里程碑以及接下来应该优先完成什么。",
+      "fixture_case": "samples/case_mapping_delay",
+      "expected_intent": "query_progress",
+      "covered_functions": [
+        "项目状态读取",
+        "加权进度计算",
+        "预期进度对比",
+        "延期里程碑识别"
+      ],
+      "expected_artifact": "输出实际完成度和预期进度，识别 W3 已到期未完成，并给出优先任务。",
+      "functional_criteria": {
+        "expected_completion": 0.26,
+        "expected_project_completion": 0.35,
+        "completion_tolerance": 0.001,
+        "must_include_keywords": [
+          "总体完成度",
+          "W3",
+          "G-T Pointer",
+          "进行中",
+          "未完成"
+        ],
+        "must_use_project_state": true,
+        "schedule_delay_detected": true
+      },
+      "agent_criteria": {
+        "expected_skill": "progress_query_skill",
+        "required_tools": [
+          "read_project_state",
+          "compute_milestone_completion",
+          "compare_expected_progress",
+          "detect_schedule_delay"
+        ],
+        "memory_read_required": true,
+        "memory_write_required": true,
+        "state_update_required": false,
+        "trace_required": true,
+        "max_steps": 7
+      },
+      "scoring": {
+        "functional_weight": 0.7,
+        "agent_weight": 0.3,
+        "pass_rule": "functional_pass_required"
+      }
+    },
+    {
+      "id": "ta_mentor_sync_required",
+      "category": "mentor_sync_required",
+      "prompt": "我连续两天都卡在金融文档实体抽取粒度标准，而且已经超过两天没有和导师同步了。请结合项目状态判断我现在是否应该找导师讨论，并说明需要和导师确认什么。",
       "fixture_case": "samples/case_graph_blocked",
       "expected_intent": "query_mentor_sync",
       "covered_functions": [
-        "导师同步判断",
-        "阻塞识别",
-        "里程碑风险判断"
+        "连续阻塞识别",
+        "导师同步周期检查",
+        "导师同步建议"
       ],
-      "expected_artifact": "判断是否需要导师同步，并给出触发原因和建议同步内容。",
-      "pass_criteria": {
+      "expected_artifact": "判断当前需要导师同步，并给出触发原因以及建议讨论的实体粒度标准问题。",
+      "functional_criteria": {
         "must_include_keywords": [
           "导师",
           "同步",
           "阻塞",
-          "里程碑",
+          "超过 2 天",
           "建议"
         ],
         "mentor_sync_required": true
+      },
+      "agent_criteria": {
+        "expected_skill": "mentor_sync_skill",
+        "required_tools": [
+          "read_project_state",
+          "read_recent_blockers",
+          "mentor_sync_check",
+          "render_mentor_suggestion"
+        ],
+        "memory_read_required": true,
+        "memory_write_required": true,
+        "state_update_required": true,
+        "trace_required": true,
+        "max_steps": 7
+      },
+      "scoring": {
+        "functional_weight": 0.7,
+        "agent_weight": 0.3,
+        "pass_rule": "functional_pass_required"
       }
     },
     {
-      "id": "ta_daily_evidence_gap_rewrite",
-      "category": "daily_report_evidence_gap",
-      "prompt": "我今天只写了“继续推进图谱抽取”，但是没有写具体产物和证据，你帮我补成一份更规范的日报，并提醒我还缺什么证据。",
-      "fixture_case": "samples/case_graph_blocked",
-      "expected_intent": "write_daily_report",
+      "id": "ta_mentor_sync_not_required",
+      "category": "mentor_sync_not_required",
+      "prompt": "当前任务没有明确阻塞，W1 按计划推进，而且昨天刚和导师同步过。请结合项目状态判断今天是否还需要额外联系导师。",
+      "fixture_case": "samples/case_baseline",
+      "expected_intent": "query_mentor_sync",
       "covered_functions": [
-        "日报生成",
-        "证据缺口识别",
-        "追问建议"
+        "导师同步周期检查",
+        "无阻塞状态识别",
+        "避免过度提醒"
       ],
-      "expected_artifact": "生成规范日报，并明确提醒缺少具体产物、文件、截图或实验结果。",
-      "pass_criteria": {
-        "required_sections": [
-          "今日进展",
-          "阻塞",
-          "证据",
-          "次日计划"
-        ],
+      "expected_artifact": "判断当前不需要额外导师同步，并建议保持正常同步节奏。",
+      "functional_criteria": {
         "must_include_keywords": [
-          "继续推进图谱抽取",
-          "具体产物",
+          "导师",
+          "当前不需要额外同步",
+          "正常节奏"
+        ],
+        "mentor_sync_required": false
+      },
+      "agent_criteria": {
+        "expected_skill": "mentor_sync_skill",
+        "required_tools": [
+          "read_project_state",
+          "mentor_sync_check",
+          "render_mentor_suggestion"
+        ],
+        "memory_read_required": true,
+        "memory_write_required": false,
+        "state_update_required": false,
+        "trace_required": true,
+        "max_steps": 5
+      },
+      "scoring": {
+        "functional_weight": 0.7,
+        "agent_weight": 0.3,
+        "pass_rule": "functional_pass_required"
+      }
+    },
+    {
+      "id": "ta_quality_missing_evidence",
+      "category": "artifact_quality_review",
+      "prompt": "请检查下面这段工作记录的产物质量：今天继续推进图谱抽取，整体进展正常。除此之外没有提供文件、截图、实验结果、提交记录或任务状态。",
+      "fixture_case": "samples/case_graph_blocked",
+      "expected_intent": "review_artifact_quality",
+      "covered_functions": [
+        "产物质量检查",
+        "证据缺口识别",
+        "禁止虚构证据",
+        "补充材料建议"
+      ],
+      "expected_artifact": "指出工作描述缺少可验证证据，并建议补充文件、截图、实验结果、提交记录或任务状态。",
+      "functional_criteria": {
+        "must_include_keywords": [
           "证据",
           "文件",
           "截图",
-          "实验结果"
+          "实验结果",
+          "提交记录",
+          "任务状态"
         ],
         "evidence_gap_detected": true
+      },
+      "agent_criteria": {
+        "expected_skill": "artifact_quality_skill",
+        "required_tools": [
+          "parse_work_record",
+          "check_evidence_coverage",
+          "render_quality_feedback"
+        ],
+        "memory_read_required": false,
+        "memory_write_required": true,
+        "state_update_required": false,
+        "trace_required": true,
+        "max_steps": 5
+      },
+      "scoring": {
+        "functional_weight": 0.7,
+        "agent_weight": 0.3,
+        "pass_rule": "functional_pass_required"
       }
     },
     {
-      "id": "ta_weekly_gt_pointer_delay_risk",
-      "category": "weekly_risk_and_plan",
-      "prompt": "我这周进展不太明显，W3 的 G-T Pointer 映射还没完成，主要卡在跨文档共现实体的节点合并策略，请帮我判断当前风险、是否需要导师介入，并给出下周计划。",
+      "id": "ta_quality_missing_tests_and_acceptance",
+      "category": "artifact_quality_review",
+      "prompt": "请检查这项产物是否真的可以算完成：G-T Pointer 映射模块已经写完，目前只有代码文件，没有单元测试、跨文档边界 case、实验结果和验收记录。",
       "fixture_case": "samples/case_mapping_delay",
-      "expected_intent": "write_weekly_report",
+      "expected_intent": "review_artifact_quality",
       "covered_functions": [
-        "周报生成",
-        "风险判断",
-        "导师同步提醒",
-        "下周计划"
+        "产物质量检查",
+        "完成声明验证",
+        "测试缺口识别",
+        "验收缺口识别"
       ],
-      "expected_artifact": "识别 W3 里程碑延期风险，判断需要导师介入，并生成下周可执行计划。",
-      "pass_criteria": {
+      "expected_artifact": "判断该模块暂时不能视为可验收完成，并列出单元测试、边界 case、实验结果和验收记录缺口。",
+      "functional_criteria": {
         "must_include_keywords": [
-          "W3",
           "G-T Pointer",
-          "跨文档共现实体",
-          "节点合并策略",
-          "风险",
-          "导师",
-          "下周计划"
+          "不能视为完成",
+          "单元测试",
+          "跨文档边界 case",
+          "实验结果",
+          "验收记录"
         ],
-        "schedule_delay_detected": true,
-        "mentor_sync_required": true
+        "quality_gap_detected": true
+      },
+      "agent_criteria": {
+        "expected_skill": "artifact_quality_skill",
+        "required_tools": [
+          "parse_work_record",
+          "check_test_coverage",
+          "check_acceptance_evidence",
+          "render_quality_feedback"
+        ],
+        "memory_read_required": false,
+        "memory_write_required": true,
+        "state_update_required": false,
+        "trace_required": true,
+        "max_steps": 6
+      },
+      "scoring": {
+        "functional_weight": 0.7,
+        "agent_weight": 0.3,
+        "pass_rule": "functional_pass_required"
       }
     }
   ]

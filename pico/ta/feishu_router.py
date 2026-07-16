@@ -18,9 +18,30 @@ from .feishu_adapter import build_feishu_card
 from .feishu_webhook import send_feishu_webhook
 from .local_loop import run_day
 from .metrics import compute_milestone_completion
+from .state_store import ProjectStateStore
 from .weekly_loop import evaluate_mentor_sync, run_weekly_loop
 
-Intent = Literal["write_daily_report", "write_weekly_report", "decompose_plan", "query_progress", "query_mentor_sync", "unknown"]
+Intent = Literal["write_daily_report", "write_weekly_report", "decompose_plan", "query_progress", "query_mentor_sync", "review_artifact_quality", "unknown"]
+
+INTENT_SKILLS = {
+    "write_daily_report": "daily_report_skill",
+    "write_weekly_report": "weekly_report_skill",
+    "decompose_plan": "project_planning_skill",
+    "query_progress": "progress_query_skill",
+    "query_mentor_sync": "mentor_sync_skill",
+    "review_artifact_quality": "artifact_quality_skill",
+    "unknown": "unknown_skill",
+}
+
+INTENT_TOOLS = {
+    "write_daily_report": ["read_project_state", "draft_daily_report", "check_evidence_coverage"],
+    "write_weekly_report": ["read_project_state", "read_daily_history", "evaluate_milestone_completion", "draft_weekly_report", "mentor_sync_check"],
+    "decompose_plan": ["read_project_document", "decompose_milestones", "generate_acceptance_criteria"],
+    "query_progress": ["read_project_state", "compute_milestone_completion", "render_progress_summary"],
+    "query_mentor_sync": ["read_project_state", "read_recent_blockers", "mentor_sync_check", "render_mentor_suggestion"],
+    "review_artifact_quality": ["parse_work_record", "check_evidence_coverage", "render_quality_feedback"],
+    "unknown": [],
+}
 
 
 @dataclass(frozen=True)
@@ -36,10 +57,12 @@ def route_intent(text: str) -> RoutedMessage:
         return RoutedMessage("decompose_plan", 0.9, "命中项目计划拆解关键词")
     if any(keyword in normalized for keyword in ("周报", "本周", "这周", "下周")) and not any(keyword in normalized for keyword in ("下次什么时候", "什么时候应该", "什么时候找")):
         return RoutedMessage("write_weekly_report", 0.85, "命中周报生成关键词")
-    if any(keyword in normalized for keyword in ("日报", "今天", "明天", "今日", "次日")):
-        return RoutedMessage("write_daily_report", 0.85, "命中日报生成关键词")
     if any(keyword in normalized for keyword in ("导师", "老师", "同步", "讨论", "找导师", "找老师")):
         return RoutedMessage("query_mentor_sync", 0.9, "命中导师同步关键词")
+    if any(keyword in normalized for keyword in ("产物质量", "检查这项产物", "检查下面这段工作记录", "是否真的可以算完成", "验收记录")):
+        return RoutedMessage("review_artifact_quality", 0.9, "命中产物质量评审关键词")
+    if any(keyword in normalized for keyword in ("日报", "今天", "明天", "今日", "次日")):
+        return RoutedMessage("write_daily_report", 0.85, "命中日报生成关键词")
     if any(keyword in normalized for keyword in ("完成百分", "完成度", "进度", "完成多少", "百分之多少")):
         return RoutedMessage("query_progress", 0.9, "命中进度查询关键词")
     return RoutedMessage("unknown", 0.2, "未命中明确意图关键词")
@@ -277,13 +300,78 @@ def render_mentor_sync_response(board: dict | None, case_dir: str | None) -> dic
     return {"markdown": markdown, "card": build_feishu_card(markdown, "导师同步建议")}
 
 
+def render_artifact_quality_response(text: str) -> dict:
+    missing_evidence = any(keyword in text for keyword in ("没有提供", "没有文件", "缺少", "没有截图", "没有实验结果", "没有提交记录"))
+    missing_tests = any(keyword in text for keyword in ("没有单元测试", "没有测试", "边界 case", "验收记录"))
+    quality_status = "不能视为完成" if missing_tests else "需要补充证据" if missing_evidence else "基本可进入验收检查"
+    suggestions = []
+    if missing_evidence:
+        suggestions.append("补充文件、截图、实验结果、提交记录或任务状态。")
+    if missing_tests:
+        suggestions.append("补充单元测试、跨文档边界 case、实验结果和验收记录。")
+    if not suggestions:
+        suggestions.append("补充可复现实验说明和验收标准，便于导师检查。")
+    markdown = "\n".join([
+        "## 产物质量检查",
+        "",
+        f"- 判断: {quality_status}",
+        f"- 原始描述: {text.strip()}",
+        "",
+        "### 发现的问题",
+        *([f"- {item}" for item in suggestions] if suggestions else ["- 暂无明显缺口"]),
+        "",
+        "### 下一步建议",
+        "- 将“完成声明”对应到可验证产物，避免只有描述没有证据。",
+    ])
+    return {"markdown": markdown, "card": build_feishu_card(markdown, "产物质量检查")}
+
+
+def build_trace(routed: RoutedMessage, text: str, board: dict | None, case_dir: str | None) -> list[dict]:
+    tools = list(INTENT_TOOLS.get(routed.intent, []))
+    if not board and "read_project_state" in tools:
+        tools.remove("read_project_state")
+    if not case_dir and "read_daily_history" in tools:
+        tools.remove("read_daily_history")
+    return [
+        {"event": "message_received", "text_length": len(text)},
+        {"event": "intent_routed", "intent": routed.intent, "confidence": routed.confidence, "reason": routed.reason},
+        {"event": "skill_selected", "skill": INTENT_SKILLS.get(routed.intent, "unknown_skill")},
+        {"event": "tools_planned", "tools": tools},
+    ]
+
+
+def build_metadata(routed: RoutedMessage, trace: list[dict], state_updates: list[dict] | None = None) -> dict:
+    state_updates = state_updates or []
+    project_state_update_types = {
+        "append_daily_report",
+        "append_weekly_report",
+        "initialize_milestones",
+        "update_mentor_sync_date",
+        "append_mentor_reminder",
+    }
+    project_state_updates = [
+        update for update in state_updates
+        if update.get("update_type") in project_state_update_types
+    ]
+    return {
+        "skill_used": INTENT_SKILLS.get(routed.intent, "unknown_skill"),
+        "tools_called": next((event["tools"] for event in trace if event["event"] == "tools_planned"), []),
+        "memory_reads": ["project_state"] if "read_project_state" in next((event["tools"] for event in trace if event["event"] == "tools_planned"), []) else [],
+        "memory_writes": state_updates,
+        "state_updates": project_state_updates,
+        "trace": trace,
+    }
+
+
 def handle_feishu_text(
     text: str,
     board: dict | None = None,
     case_dir: str | None = None,
     day_index: int = 1,
+    project_state_path: str | None = None,
 ) -> dict:
     routed = route_intent(text)
+    trace = build_trace(routed, text, board, case_dir)
     if routed.intent == "write_daily_report":
         payload = render_write_daily_response(text, board, day_index)
     elif routed.intent == "write_weekly_report":
@@ -294,6 +382,8 @@ def handle_feishu_text(
         payload = render_progress_response(board)
     elif routed.intent == "query_mentor_sync":
         payload = render_mentor_sync_response(board, case_dir)
+    elif routed.intent == "review_artifact_quality":
+        payload = render_artifact_quality_response(text)
     else:
         markdown = "\n".join([
             "## 我还没理解你的需求",
@@ -305,10 +395,25 @@ def handle_feishu_text(
             "- 问导师同步：我下次什么时候找导师讨论？",
         ])
         payload = {"markdown": markdown, "card": build_feishu_card(markdown, "需求未识别")}
+    state_updates: list[dict] = []
+    if project_state_path:
+        store = ProjectStateStore(project_state_path)
+        updated_state, updates = store.apply_interaction(
+            intent=routed.intent,
+            user_text=text,
+            markdown=payload["markdown"],
+            trace=trace,
+        )
+        state_updates = [update.__dict__ for update in updates]
+        board = updated_state
+        trace.append({"event": "state_store_updated", "updates": state_updates})
+    metadata = build_metadata(routed, trace, state_updates)
     return {
         "intent": routed.intent,
         "confidence": routed.confidence,
         "reason": routed.reason,
+        "metadata": metadata,
+        "trace": trace,
         **payload,
     }
 
@@ -325,7 +430,7 @@ def main() -> None:
     args = parser.parse_args()
 
     board = _case_board(args.case_dir, args.project_state)
-    payload = handle_feishu_text(args.text, board=board, case_dir=args.case_dir, day_index=args.day_index)
+    payload = handle_feishu_text(args.text, board=board, case_dir=args.case_dir, day_index=args.day_index, project_state_path=args.project_state)
     if args.send:
         if not args.webhook_url:
             raise SystemExit("Missing --webhook-url or FEISHU_WEBHOOK_URL.")
