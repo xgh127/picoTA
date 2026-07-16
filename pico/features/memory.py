@@ -37,11 +37,37 @@ DURABLE_TOPIC_DEFAULTS = {
         "summary": "Stable user preferences.",
         "tags": ["preference"],
     },
-    # TODO[B]: 徐国洪 — 注册 TA 场景的 3 个 durable topic
-    #   当 detect_risk / grade_rubric 等 TA 工具沉淀 skill 时使用。
-    # "ta-project-standards": {"title": ..., "summary": ..., "tags": ["ta", "standard"]},
-    # "ta-intern-flow": {"title": ..., "summary": ..., "tags": ["ta", "flow"]},
-    # "ta-faq": {"title": ..., "summary": ..., "tags": ["ta", "faq"]},
+    # TA 场景 RAG 知识库 topics — 由 pico/ta/knowledge_base.py 的 seed 函数填充
+    "ta-project-standards": {
+        "title": "项目通用规范库",
+        "summary": "各类小项目（数据分析/工具开发/报告）交付标准与模板。",
+        "tags": ["ta", "standard", "project-template"],
+    },
+    "ta-intern-flow": {
+        "title": "实习流程库",
+        "summary": "实习生工作规范、导师介入判定规则与日常流程。",
+        "tags": ["ta", "flow", "intern-sop"],
+    },
+    "ta-faq": {
+        "title": "问题解决方案库",
+        "summary": "历史同类实习生踩坑案例与标准答疑话术。",
+        "tags": ["ta", "faq", "case-study"],
+    },
+    "ta-teaching-principles": {
+        "title": "助教教研原则",
+        "summary": "禁止直接替代实习生执行任务、师德规范与红线。",
+        "tags": ["ta", "principle", "ethics"],
+    },
+    "ta-internal-materials": {
+        "title": "内部学习资料",
+        "summary": "团队内部积累的技术文档、培训资料与最佳实践。",
+        "tags": ["ta", "material", "internal-training"],
+    },
+    "ta-external-materials": {
+        "title": "外部学习资料",
+        "summary": "外部公开的学习资源、推荐课程与参考链接。",
+        "tags": ["ta", "material", "external-resource"],
+    },
 }
 
 
@@ -285,7 +311,17 @@ def file_freshness(raw_path, workspace_root=None):
 
 
 def _tokenize(text):
-    return {token.lower() for token in re.findall(r"[A-Za-z0-9_]+", str(text))}
+    tokens = {token.lower() for token in re.findall(r"[A-Za-z0-9_]+", str(text))}
+    cjk_sequences = re.findall(r"[\u4e00-\u9fff]+", str(text))
+    for seq in cjk_sequences:
+        tokens.add(seq)
+        if len(seq) >= 4:
+            for i in range(len(seq) - 1):
+                tokens.add(seq[i:i+2])
+        if len(seq) >= 6:
+            for i in range(len(seq) - 2):
+                tokens.add(seq[i:i+3])
+    return tokens
 
 
 def _parse_timestamp(value):

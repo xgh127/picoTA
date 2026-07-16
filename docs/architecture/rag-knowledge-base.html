@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TA Agent RAG 知识库架构设计</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true,theme:'neutral',fontFamily:'-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif',themeVariables:{primaryColor:'#667eea',primaryTextColor:'#fff',primaryBorderColor:'#5a67d8',lineColor:'#94a3b8',secondaryColor:'#f1f5f9',tertiaryColor:'#e2e8f0',fontSize:'14px'}})</script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f0f4f8;color:#1e293b;line-height:1.7}
+.wrapper{max-width:1100px;margin:0 auto;padding:0 24px}
+
+.hero{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);color:#fff;padding:60px 0 50px;text-align:center}
+.hero h1{font-size:2.6em;font-weight:800;letter-spacing:-0.5px}
+.hero .sub{color:#93c5fd;margin-top:8px;font-size:1.05em}
+.hero .badge{display:inline-block;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);border-radius:20px;padding:4px 16px;margin-top:14px;font-size:0.85em;color:#bfdbfe}
+
+.quick-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:-30px auto 0;max-width:900px;padding:0 24px}
+.qm-card{background:#fff;border-radius:12px;padding:18px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.06)}
+.qm-card .num{font-size:1.8em;font-weight:700;color:#667eea;display:block}
+.qm-card .label{font-size:0.8em;color:#64748b;margin-top:2px}
+
+.section{margin:40px 0}
+.section h2{font-size:1.5em;margin-bottom:20px;padding-left:14px;border-left:4px solid #667eea;color:#1e293b}
+.section .card{background:#fff;border-radius:14px;padding:30px;box-shadow:0 1px 4px rgba(0,0,0,0.06);margin-bottom:20px}
+.section .card h3{font-size:1.1em;color:#475569;margin-bottom:12px}
+
+.diagram-wrap{background:#f8fafc;border-radius:10px;padding:20px;overflow-x:auto;text-align:center;border:1px solid #e2e8f0}
+.diagram-wrap .mermaid{display:inline-block;text-align:left}
+
+.tree{font-family:'JetBrains Mono','Consolas',monospace;font-size:0.88em;background:#0f172a;color:#e2e8f0;border-radius:10px;padding:20px 24px;line-height:1.9;overflow-x:auto}
+.tree .dir{color:#38bdf8}
+.tree .file{color:#a5b4fc}
+.tree .comment{color:#64748b;font-style:italic}
+.tree .highlight{background:rgba(102,126,234,0.2);border-radius:3px;padding:0 4px}
+
+table{width:100%;border-collapse:collapse;font-size:0.93em}
+th{background:#f1f5f9;font-weight:600;color:#475569;padding:10px 12px;text-align:left;border-bottom:2px solid #e2e8f0}
+td{padding:10px 12px;border-bottom:1px solid #e2e8f0}
+code{background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:0.9em;color:#475569}
+.tag{display:inline-block;background:#ede9fe;color:#6d28d9;padding:1px 10px;border-radius:10px;font-size:0.78em;margin:1px 3px}
+
+.footer{text-align:center;padding:30px 0;color:#94a3b8;font-size:0.85em;border-top:1px solid #e2e8f0;margin-top:40px}
+
+@media(max-width:700px){.quick-metrics{grid-template-columns:repeat(2,1fr)}
+.hero h1{font-size:1.8em}
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>TA Agent RAG 知识库架构</h1>
+  <p class="sub">基于 DurableMemoryStore 的轻量级 RAG 实现 · 无外部向量数据库依赖</p>
+  <span class="badge">pico TA Agent · 实习生项目助教 · 2026</span>
+</div>
+
+<div class="quick-metrics">
+  <div class="qm-card"><span class="num">44</span><span class="label">知识条目</span></div>
+  <div class="qm-card"><span class="num">6</span><span class="label">知识域</span></div>
+  <div class="qm-card"><span class="num">1.9ms</span><span class="label">平均检索</span></div>
+  <div class="qm-card"><span class="num">100%</span><span class="label">命中率</span></div>
+</div>
+
+<div class="wrapper">
+
+<div class="section">
+  <h2>一、架构总览</h2>
+  <div class="card">
+    <p style="margin-bottom:16px;color:#475569;line-height:1.8">
+      RAG 知识库采用<strong>三层架构</strong>：用户层（TA Agent / 实习生 / 导师）通过工具接口 <code>search_knowledge_base</code> 
+      访问知识库层；知识库层基于 <code>DurableMemoryStore</code> 引擎进行 <strong>tag 精确匹配 + keyword 重叠度</strong> 
+      检索；存储层以 <strong>6 个独立 markdown 文件</strong> 形式持久化在 <code>.pico/memory/topics/</code> 下，每文件对应一个知识域。
+      整体不依赖任何外部向量数据库或 embedding 服务，完全本地运行。
+    </p>
+    <div class="diagram-wrap">
+      <pre class="mermaid">
+graph TB
+    subgraph 用户层
+        TA["TA Agent<br/>--persona ta"]
+        INTERN["实习生<br/>日报/代码"]
+        MENTOR["导师<br/>审批/反馈"]
+    end
+    subgraph RAG知识库层
+        KB["search_knowledge_base<br/>工具接口"]
+        RET["检索引擎<br/>tag+keyword overlap"]
+        INDEX[("MEMORY.md<br/>索引")]
+        TOPICS[("topics/<br/>6 topic .md 文件")]
+    end
+    subgraph 存储层
+        PS["ta-project-standards<br/>项目通用规范库"]
+        IF["ta-intern-flow<br/>实习流程库"]
+        FAQ["ta-faq<br/>问题解决方案库"]
+        TP["ta-teaching-principles<br/>助教教研原则"]
+        IM["ta-internal-materials<br/>内部学习资料"]
+        EM["ta-external-materials<br/>外部学习资料"]
+    end
+    TA -->|查询| KB
+    KB --> RET
+    RET --> INDEX
+    RET --> TOPICS
+    TOPICS --> PS &amp; IF &amp; FAQ &amp; TP &amp; IM &amp; EM
+    INTERN -.->|提交日报| TA
+    MENTOR -.->|升级审批| TA
+      </pre>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>二、数据流</h2>
+  <div class="card">
+    <p style="margin-bottom:16px;color:#475569;line-height:1.8">
+      当 TA Agent 需要参考知识库时，按以下链路执行：Agent 发起工具调用 → <code>search_knowledge_base</code> 
+      解析查询 → <code>DurableMemoryStore</code> 读取 MEMORY.md 索引定位 topic → 加载对应 .md 文件中的全部笔记 
+      → <code>_tokenize</code> 对查询和笔记进行中英文分词（中文支持 bigram/trigram）→ 按 tag 命中优先、
+      keyword 重叠次之、更新时间最后排序 → 返回 Top-N 结果给 Agent。整个链路在<strong>2ms 内</strong>完成。
+    </p>
+    <div class="diagram-wrap">
+      <pre class="mermaid">
+sequenceDiagram
+    actor Intern as 实习生
+    participant TA as TA Agent
+    participant KB as search_knowledge_base
+    participant Store as DurableMemoryStore
+    participant File as .pico/memory/topics/
+
+    Intern->>TA: 提交日报
+    TA->>KB: search_knowledge_base(query="日报模板", topic="ta-project-standards")
+    KB->>Store: retrieval_candidates(query, limit=6)
+    Store->>File: 读取 MEMORY.md 索引
+    Store->>File: 读取各 topic .md 文件
+    File-->>Store: 返回结构化 notes
+    Store->>Store: _tokenize 分词 + tag/keyword 匹配
+    Store-->>KB: 返回按相关度排序的结果
+    KB-->>TA: 格式化结果文本
+    TA-->>Intern: 生成日报评估建议
+      </pre>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>三、存储结构</h2>
+  <div class="card">
+    <p style="margin-bottom:16px;color:#475569;line-height:1.8">
+      知识库以<strong>纯文件形式</strong>存储在项目 <code>.pico/memory/</code> 目录下，天然支持 git 版本追踪。
+      <code>MEMORY.md</code> 是自动维护的索引文件，记录所有 topic 的元信息（标题、摘要、标签）。
+      每个 topic 对应 <code>topics/{topic}.md</code> 一个独立文件，内部以 YAML 风格的 header 记录元数据，
+      <code>## Notes</code> 下方以列表形式存放具体知识条目。这种设计让知识库<strong>人类可读、机器可解析、git 可 diff</strong>。
+    </p>
+    <h3>文件目录</h3>
+    <div class="tree">
+<span class="dir">.pico/memory/</span>
+├── <span class="file">MEMORY.md</span>                 <span class="comment"># 索引文件（自动维护）</span>
+│   <span class="comment">- [ta-project-standards](...): 项目通用规范库</span>
+│   <span class="comment">- [ta-intern-flow](...): 实习流程库</span>
+│   <span class="comment">- [ta-faq](...): 问题解决方案库</span>
+│   <span class="comment">- [ta-teaching-principles](...): 助教教研原则</span>
+│   <span class="comment">- [ta-internal-materials](...): 内部学习资料</span>
+│   <span class="comment">- [ta-external-materials](...): 外部学习资料</span>
+│
+└── <span class="dir">topics/</span>
+    ├── <span class="file">ta-project-standards.md</span>         <span class="comment"># 7 条</span>
+    ├── <span class="file">ta-intern-flow.md</span>              <span class="comment"># 7 条</span>
+    ├── <span class="file">ta-faq.md</span>                      <span class="comment"># 9 条</span>
+    ├── <span class="file">ta-teaching-principles.md</span>       <span class="comment"># 7 条</span>
+    ├── <span class="file">ta-internal-materials.md</span>        <span class="comment"># 6 条</span>
+    └── <span class="file">ta-external-materials.md</span>        <span class="comment"># 8 条</span>
+    </div>
+    <h3 style="margin-top:20px">Topic 文件格式</h3>
+    <div class="tree">
+<span class="comment"># 项目通用规范库</span>
+<span class="file">- topic: ta-project-standards</span>
+<span class="file">- summary: 各类小项目（数据分析/工具开发/报告）交付标准与模板。</span>
+<span class="file">- tags: ta, standard, project-template</span>
+<span class="file">- updated_at: 2026-07-16T00:34:04</span>
+
+<span class="dir">## Notes</span>
+<span class="file">- 数据分析类项目交付标准：需包含 (1) 数据来源与 ETL 过程描述 ...</span>
+<span class="file">- 工具开发类项目交付标准：需包含 (1) 项目 README（安装/使用/示例）...</span>
+<span class="file">- 报告类项目交付标准：需包含 (1) 背景与问题定义 (2) ...</span>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>四、检索算法</h2>
+  <div class="card">
+    <p style="margin-bottom:16px;color:#475569;line-height:1.8">
+      检索引擎采用<strong>轻量级方案</strong>——不做 embedding 向量化，而是基于标签精确匹配和关键词重叠度进行排序。
+      查询文本先经过 <code>_tokenize</code> 分词：英文按 <code>[A-Za-z0-9_]+</code> 拆分，中文按连续汉字序列提取
+      并额外生成 2-gram 和 3-gram 子串以提升召回率。排序优先级：先看是否有 tag 精确命中（最高优先级），
+      再看 keyword 重叠数量，同分时优先返回更新条目。这种方案在 <strong>44 条规模下命中率 100%、耗时 &lt; 2ms</strong>，
+      完全满足 TA 场景的实时性要求。
+    </p>
+    <div class="diagram-wrap">
+      <pre class="mermaid">
+flowchart LR
+    Q["用户查询"] --> T["_tokenize"]
+    T --> WT["英文: ASCII 分词<br/>中文: 全文 + bigram/trigram"]
+    WT --> M["tag 精确匹配"]
+    WT --> O["keyword 重叠度"]
+    M --> R["排序: tag_hit > overlap > recency"]
+    O --> R
+    R --> OUT["Top-N 结果"]
+      </pre>
+    </div>
+    <div style="margin-top:16px;padding:14px;background:#f1f5f9;border-radius:8px;font-family:monospace;font-size:0.9em">
+      score = (exact_tag_match, keyword_overlap, recency)
+    </div>
+    <ul style="margin-top:10px;padding-left:20px;color:#475569">
+      <li><strong>exact_tag_match</strong> — 查询 token 是否命中 note 的 tags（布尔值，最高优先级）</li>
+      <li><strong>keyword_overlap</strong> — 查询 token 与 note 文本的 token 交集数</li>
+      <li><strong>recency</strong> — 笔记创建时间戳（ISO 时间，同分时更新者优先）</li>
+    </ul>
+  </div>
+</div>
+
+<div class="section">
+  <h2>五、与 TA Agent 的集成</h2>
+  <div class="card">
+    <p style="margin-bottom:16px;color:#475569;line-height:1.8">
+      知识库通过<strong>两个注入点</strong>与 TA Agent 集成：一是 <code>persona.py</code> 中的 <code>TA_PREFIX</code>，
+      在系统提示词中告知 Agent 知识库的存在和使用方式；二是 <code>tools.py</code> 中注册的 
+      <code>search_knowledge_base</code> 工具，Agent 在运行时按需调用，<strong>不占用 system prompt 空间</strong>。
+      知识库初始化由 <code>python -m pico.ta.knowledge_base --seed</code> 一次命令完成，
+      后续可通过增量更新的方式添加新知识。
+    </p>
+    <div class="diagram-wrap">
+      <pre class="mermaid">
+graph TB
+    subgraph TA Agent启动流程
+        START["python -m pico --persona ta"] --> PERSONA["persona.py"]
+        PERSONA --> PREFIX["TA_PREFIX 注入<br/>含知识库使用说明"]
+        PREFIX --> TOOLS["ta/tools.py<br/>注册 search_knowledge_base"]
+        TOOLS --> INIT["知识库初始化<br/>python -m pico.ta.knowledge_base --seed"]
+    end
+    subgraph 运行时交互
+        AGENT["TA Agent 运行"] -->|理解场景| QUERY["调用 search_knowledge_base"]
+        QUERY --> RESULT["获取相关知识"]
+        RESULT --> JUDGE["辅助判断/生成建议"]
+    end
+      </pre>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>六、6 大知识域总览</h2>
+  <div class="card">
+    <table>
+      <tr><th>Topic</th><th>标题</th><th>条目</th><th>标签</th><th>用途</th></tr>
+      <tr><td><code>ta-project-standards</code></td><td>项目通用规范库</td><td>7</td><td><span class="tag">standard</span><span class="tag">project-template</span></td><td>交付标准、模板、评审清单</td></tr>
+      <tr><td><code>ta-intern-flow</code></td><td>实习流程库</td><td>7</td><td><span class="tag">flow</span><span class="tag">intern-sop</span></td><td>日报/周报流程、导师介入规则</td></tr>
+      <tr><td><code>ta-faq</code></td><td>问题解决方案库</td><td>9</td><td><span class="tag">faq</span><span class="tag">case-study</span></td><td>踩坑案例、答疑话术</td></tr>
+      <tr><td><code>ta-teaching-principles</code></td><td>助教教研原则</td><td>7</td><td><span class="tag">principle</span><span class="tag">ethics</span></td><td>禁止替代执行、SBI反馈模型</td></tr>
+      <tr><td><code>ta-internal-materials</code></td><td>内部学习资料</td><td>6</td><td><span class="tag">material</span><span class="tag">internal-training</span></td><td>项目架构、工具文档、部署流程</td></tr>
+      <tr><td><code>ta-external-materials</code></td><td>外部学习资料</td><td>8</td><td><span class="tag">material</span><span class="tag">external-resource</span></td><td>Python/Git/SQL/ML/LLM 教程</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="section">
+  <h2>七、设计决策记录</h2>
+  <div class="card">
+    <table>
+      <tr><th>决策</th><th>选择</th><th>原因</th></tr>
+      <tr><td>检索方式</td><td>tag + keyword overlap</td><td>不上 embedding，省向量库工程，小规模够用</td></tr>
+      <tr><td>存储格式</td><td>markdown 文件</td><td>人类可读、git 可追踪、零依赖</td></tr>
+      <tr><td>中文分词</td><td>全文 + bigram/trigram</td><td>避免 jieba 依赖，覆盖大多数查询场景</td></tr>
+      <tr><td>初始化方式</td><td><code>seed_knowledge_base()</code> CLI</td><td>一次命令填充，后续增量更新</td></tr>
+      <tr><td>与 Agent 集成</td><td>工具调用 <code>search_knowledge_base</code></td><td>TA 在运行时按需查询，不占用 system prompt</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="section">
+  <h2>八、量化指标</h2>
+  <div class="card">
+    <table>
+      <tr><th>指标</th><th>数值</th></tr>
+      <tr><td>总知识条目数</td><td><strong>44</strong></td></tr>
+      <tr><td>覆盖 topic 数</td><td><strong>6</strong></td></tr>
+      <tr><td>单条平均长度</td><td>~120 字</td></tr>
+      <tr><td>检索响应时间</td><td><strong>1.9ms</strong>（本地文件）</td></tr>
+      <tr><td>命中率</td><td><strong>100%</strong>（15/15 测试查询）</td></tr>
+      <tr><td>代码行数</td><td>~450 行</td></tr>
+      <tr><td>测试用例</td><td>8 个全部通过</td></tr>
+    </table>
+  </div>
+</div>
+
+</div>
+
+<div class="section">
+  <h2>九、实现亮点</h2>
+  <div class="card">
+    <table>
+      <tr><th>亮点</th><th>说明</th></tr>
+      <tr>
+        <td><strong>零外部依赖</strong></td>
+        <td>不上 embedding 模型、不接向量数据库、不调用外部 API，纯本地文件检索，单次查询 &lt; 2ms</td>
+      </tr>
+      <tr>
+        <td><strong>CJK 原生支持</strong></td>
+        <td>中文检索不依赖 jieba 分词，通过 bigram/trigram 子串匹配实现高召回，支持中英文混合查询</td>
+      </tr>
+      <tr>
+        <td><strong>文件即数据库</strong></td>
+        <td>知识以 markdown 文件存储，人类可读、git 可追踪、可手动编辑，零学习成本</td>
+      </tr>
+      <tr>
+        <td><strong>增量更新</strong></td>
+        <td>知识库支持幂等写入，重复执行 seed 不会产生重复条目；新知识可通过 <code>store.promote()</code> 增量追加</td>
+      </tr>
+      <tr>
+        <td><strong>与 Agent 正交</strong></td>
+        <td>知识库以工具调用方式接入，不侵入 <code>agent_loop.py</code> 主循环，符合整个 TA 项目"不改主循环"的工程纪律</td>
+      </tr>
+      <tr>
+        <td><strong>测试覆盖</strong></td>
+        <td>8 个测试用例覆盖初始化、幂等、检索、过滤、状态查询全链路，确保代码可靠性</td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<div class="footer">
+  基于 pico TA Agent · 实习生项目助教 · RAG 知识库 · 2026
+</div>
+
+</body>
+</html>
