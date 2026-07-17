@@ -41,6 +41,18 @@ Trace / State / Benchmark Report
 | Harness | 控制触发、权限、异常、安全停止和审计日志 |
 | Feishu Adapter | 将 Agent 能力接入飞书群聊，支持 @ 机器人交互 |
 
+## 分支说明
+
+当前项目按功能模块拆分为多个开发分支，`main` 作为统一展示和说明入口：
+
+| 分支 | 重点内容 |
+|---|---|
+| `main` | 项目总览分支，保留统一版 README，用于最终展示、说明和汇总 |
+| `duyu-dev` | TA Agent 主流程分支，重点是日报/周报、飞书接入、项目状态、评测集和 benchmark |
+| `context-work` | Context 管理分支，重点是上下文组织、长短期记忆、压缩、Recipe 和 Context Manifest |
+| `xgh-dev` | Tools / RAG 分支，重点是知识库检索、工具调用、里程碑检查、风险检测和学习路线生成 |
+| `harness-dev` | Harness 受控运行分支，重点是触发控制、权限控制、风险证据闸门、异常处理、审计 trace 和 harness 评测 |
+
 ## 核心功能
 
 | 功能 | 说明 |
