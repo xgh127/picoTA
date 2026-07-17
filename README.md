@@ -1,265 +1,407 @@
-# pico
+# picoTA：实习生项目助教 Agent
 
-`pico` 是一个面向代码仓库的轻量本地 coding agent。它直接跑在终端里，先看当前工作区，再用一组受约束的工具去读文件、改文件、跑命令，并把会话状态保存在本地 `.pico/` 目录里。
+`picoTA` 是基于 pico 改造的实习生项目助教 Agent。项目目标不是替代实习生完成任务，而是围绕实习项目过程提供每日陪跑、阶段复盘、任务拆解、产物检查、导师同步提醒和可量化评测能力。
 
-它更像一个能在仓库里持续工作的命令行助手，不是纯聊天窗口。你可以拿它做代码排查、测试修复、仓库分析，或者让它在当前项目里执行一次性的工程任务。
+最终效果：在飞书群中 @ 小助手，实习生可以完成日报/周报生成、项目进度查询、导师同步判断和任务拆解；本地也可以直接运行同样的 Agent 逻辑，便于调试、评测和演示。
 
-## 适合做什么
+## 项目目标
 
-- 在本地仓库里排查测试失败
-- 读取当前代码结构并给出修改建议
-- 基于现有文件做小步迭代，而不是脱离仓库空想
-- 在会话中保留上下文，支持继续上一次工作
+本项目面向实习生项目管理场景，核心目标是：
 
-## 主要特性
+- 每天与实习生交互，收集日报并确认任务进展。
+- 根据项目计划和阶段目标，辅助规划次日/下周工作。
+- 识别阻塞、延期、证据不足、产物质量不稳定等问题。
+- 在合适时机提醒实习生与导师同步。
+- 通过可复现评测集验证 Agent 功能和运行链路。
 
-- 包名是 `pico`
-- CLI 命令是 `pico`
-- 模块入口是 `python -m pico`
-- 会话保存在 `.pico/sessions/`
-- 每次运行的工件保存在 `.pico/runs/<run_id>/`
-- 支持四类模型后端：
-  - Ollama
-  - OpenAI 兼容 Responses API
-  - Anthropic 兼容 Messages API
-  - DeepSeek Anthropic 兼容 API
+停止条件包括：工作时间结束、关键任务完成、导师确认项目结束。
 
-## 使用截图
+## 总体架构
 
-CLI 帮助信息：
+```text
+飞书 / 本地命令
+      ↓
+Intent Router
+      ↓
+TA Skills / Tools / RAG / Context / Harness
+      ↓
+日报周报、计划拆解、进度查询、导师同步、质量检查
+      ↓
+Trace / State / Benchmark Report
+```
 
-![pico help](assets/screenshots/pico-help.png)
+项目整体由六个部分组成：
 
-启动界面：
+| 模块 | 作用 |
+|---|---|
+| Loop / Eval | 设计每日循环、阶段循环和量化评测口径 |
+| Context | 组织本轮任务所需的项目状态、记忆、证据和工具结果 |
+| Tools / RAG | 提供里程碑检查、风险识别、知识库检索、学习路线生成等能力 |
+| Skill | 沉淀项目拆解、风险识别、阶段验收、日报周报等可复用能力 |
+| Harness | 控制触发、权限、异常、安全停止和审计日志 |
+| Feishu Adapter | 将 Agent 能力接入飞书群聊，支持 @ 机器人交互 |
 
-![pico start](assets/screenshots/pico-start.png)
+## 核心功能
 
-REPL 内置命令与会话路径：
+| 功能 | 说明 |
+|---|---|
+| 日报生成 | 将零散工作描述整理为包含进展、证据、阻塞、次日计划的日报 |
+| 周报生成 | 汇总本周完成、任务完成度、下周计划、实习收获和导师同步建议 |
+| 项目计划拆解 | 将模糊项目目标拆解为阶段、任务、重难点和验收标准 |
+| 项目进度查询 | 根据项目状态和里程碑权重计算整体完成百分比 |
+| 导师同步提醒 | 根据连续阻塞、超过同步周期、里程碑逾期等规则判断是否应同步导师 |
+| 产物质量检查 | 检查代码、报告、数据、实验结果是否有足够证据支撑 |
+| 非向量化 RAG | 基于 tag 精确匹配和 keyword 重叠度检索项目知识库 |
+| 量化评测 | 使用任务集评测功能层结果和 Agent 机制层链路 |
 
-![pico repl](assets/screenshots/pico-repl.png)
+## 工作流设计
 
-## 安装
+### 每日 Loop
+
+```text
+读取项目状态 → 询问今日进展 → 对比计划 → 识别阻塞 → 给下一步建议 → 更新项目状态
+```
+
+每日循环关注：今天是否有真实进展、是否暴露卡点、明天是否有明确计划。
+
+### 阶段 Loop
+
+```text
+检查阶段产物 → 找缺口 → 判断是否需要导师介入 → 调整后续计划
+```
+
+阶段循环关注：项目是否按里程碑推进、阶段产物是否可验收、是否需要导师介入。
+
+## 目录结构
+
+```text
+picoTA/
+├── pico/
+│   ├── ta/                         # TA 场景核心逻辑
+│   │   ├── feishu_router.py        # 意图识别与功能路由
+│   │   ├── feishu_server.py        # 飞书事件回调服务
+│   │   ├── feishu_adapter.py       # 飞书卡片构造
+│   │   ├── local_loop.py           # 日报最小闭环
+│   │   ├── weekly_loop.py          # 周报/阶段循环
+│   │   ├── metrics.py              # 指标计算
+│   │   ├── state_store.py          # 项目状态落盘
+│   │   └── ta_benchmark_eval.py    # TA 评测脚本
+│   ├── context/                    # Context 管理相关能力
+│   ├── tools.py                    # 工具注册与调用
+│   └── runtime.py                  # pico 运行时
+├── skills/                         # 可复用 Skill
+├── samples/                        # 样例项目状态与日报周报数据
+├── benchmarks/                     # 评测集与评测结果
+├── docs/                           # 项目文档
+├── tests/                          # 单元测试
+└── scripts/                        # 演示和辅助脚本
+```
+
+不同分支的文件可能略有差异。`main` 合并后以仓库中的实际目录为准。
+
+## 快速开始
+
+### 1. 克隆项目
+
+```bash
+git clone https://github.com/xgh127/picoTA.git
+cd picoTA
+```
+
+如果需要查看其他同学的工作分支：
+
+```bash
+git fetch origin
+git branch -r
+git checkout <branch-name>
+```
+
+### 2. 创建环境
 
 需要 Python 3.10+。
 
-如果你用 `uv`，直接安装依赖：
+```bash
+python -m venv .venv
+```
+
+Windows PowerShell：
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+macOS / Linux：
+
+```bash
+source .venv/bin/activate
+```
+
+安装项目：
+
+```bash
+pip install -e .
+pip install pytest
+```
+
+如使用 `uv`：
 
 ```bash
 uv sync
 ```
 
-如果你已经在自己的 Python 环境里工作，也可以直接装成可编辑模式：
+## 本地运行
+
+### 跑日报最小闭环
 
 ```bash
-pip install -e .
+python -m pico.ta.local_loop --output artifacts/ta-min-loop-report.json
 ```
 
-## 快速开始
-
-在当前仓库里启动交互模式。默认 provider 是 DeepSeek：
+### 跑周报/阶段循环
 
 ```bash
-uv run pico
+python -m pico.ta.weekly_loop --output artifacts/ta-weekly-report.json
 ```
 
-指定另一个工作目录：
+### 模拟飞书消息
 
 ```bash
-uv run pico --cwd /path/to/repo
+python -m pico.ta.feishu_router \
+  --text "我今天完成了 PageIndex baseline，记录了 latency、token 和 LLM calls，明天准备调研 GBrain 和 Cognee，帮我写日报" \
+  --case-dir samples/case_baseline \
+  --project-state samples/case_baseline/project_state.json
 ```
 
-直接跑一次性任务：
+Windows PowerShell 可写成：
 
-```bash
-uv run pico "inspect the test failures and propose a fix"
+```powershell
+python -m pico.ta.feishu_router `
+  --text "我今天完成了 PageIndex baseline，记录了 latency、token 和 LLM calls，明天准备调研 GBrain 和 Cognee，帮我写日报" `
+  --case-dir samples/case_baseline `
+  --project-state samples/case_baseline/project_state.json
 ```
 
-如果当前环境已经安装过包，也可以直接这样启动：
-
-```bash
-python -m pico
-```
-
-## 模型后端
-
-Pico 启动时会读取项目根目录的 `.env`。本地真实 key 放在 `.env`，仓库只保留 `.env.example`。配置优先级是：
+可测试的问题示例：
 
 ```text
-显式 CLI 参数 > .env 里的 PICO_* 变量 > 旧环境变量 > 代码默认值
+帮我写一份日报
+帮我根据这周工作写周报
+请把项目目标拆成 8 周计划
+我现在工作完成百分之多少了？
+我下次什么时候找导师讨论？
+请检查这项产物是否真的可以算完成
 ```
 
-Provider 选择的具体顺序是：
+## 飞书接入
+
+飞书链路分为两种：
+
+1. **主动推送**：本地 Agent 生成结果后，通过飞书 webhook 发送到群里。
+2. **被动回复**：群里 @ 机器人后，飞书事件订阅把消息推给本地服务，Agent 处理后再回复群聊。
+
+### 1. 配置环境变量
+
+不要把真实 webhook、token 或 API key 写入代码或提交到仓库。
+
+```bash
+export FEISHU_WEBHOOK_URL="https://open.feishu.cn/open-apis/bot/v2/hook/your-webhook"
+export TA_PROJECT_STATE_PATH="samples/case_baseline/project_state.json"
+```
+
+Windows PowerShell：
+
+```powershell
+$env:FEISHU_WEBHOOK_URL="https://open.feishu.cn/open-apis/bot/v2/hook/your-webhook"
+$env:TA_PROJECT_STATE_PATH="samples/case_baseline/project_state.json"
+```
+
+如果飞书事件订阅配置了 Verification Token：
+
+```bash
+export FEISHU_VERIFICATION_TOKEN="your-token"
+```
+
+### 2. 启动本地事件服务
+
+```bash
+python -m pico.ta.feishu_server \
+  --port 8080 \
+  --project-state samples/case_baseline/project_state.json
+```
+
+服务地址：
 
 ```text
---provider > PICO_PROVIDER > 代码默认 deepseek
+http://localhost:8080/health
+http://localhost:8080/feishu/events
 ```
 
-不传 `--provider` 且没有 `PICO_PROVIDER` 时默认使用 `deepseek`。这是推荐配置路径：DeepSeek 的 Anthropic-compatible endpoint 比本地 Ollama 更少依赖本机模型环境，也比 OpenAI-compatible/Anthropic-compatible 代理少一层默认 gateway 假设。其他 provider 仍然保留，可以在 `.env` 里写 `PICO_PROVIDER=openai`、`PICO_PROVIDER=anthropic`、`PICO_PROVIDER=ollama`，也可以显式传 `--provider openai`、`--provider anthropic` 或 `--provider ollama`。
+### 3. 配置公网访问
 
-`.env` 会在构建 provider client 前加载，并覆盖当前进程里的同名环境变量。模型名和 base URL 可以通过 `--model`、`--base-url` 临时覆盖；API key 只从环境变量读取。
+飞书无法直接访问本地 `localhost`，需要使用 cpolar、ngrok 或云服务器把本地端口暴露到公网。
 
-本地第一次配置：
+飞书开放平台事件订阅地址示例：
+
+```text
+https://your-public-domain/feishu/events
+```
+
+当前最小实现支持 URL verification 和明文消息事件；如开启飞书事件加密，需要补充解密逻辑。
+
+## Context 设计
+
+Context 模块负责在每次模型调用前，选择并组织当前任务所需的最小可信信息。
+
+核心原则：
+
+- **Scope 一致**：不同实习生、项目、导师的信息不能串用。
+- **来源可追溯**：项目状态、证据、工具结果需要保留来源引用。
+- **权限不扩张**：Recipe 和 Skill 只能收紧上下文和工具权限，不能扩大权限。
+- **必需项不推测**：缺少关键证据时应停止或标记 `NEED_REVIEW`。
+- **预算内择优**：优先保留系统规则、Skill、项目状态和必要证据，再压缩历史记录。
+
+Context 不作为业务事实的唯一权威来源，而是服务于检索、编排、恢复和审计。
+
+## Tools / RAG 知识库
+
+工具层用于把 Agent 的判断落到可验证操作上，包括：
+
+- `check_milestone`：检查里程碑是否到期、完成或延期。
+- `detect_risk`：识别延期、目标漂移、假进展、质量不稳等风险。
+- `grade_rubric`：根据标准检查代码、报告或数据产物。
+- `search_knowledge_base`：检索项目规范、实习流程、历史案例和教研原则。
+- `generate_learning_route`：生成学习路线和计划安排。
+
+RAG 知识库采用轻量非向量化方案：基于 tag 精确匹配和 keyword 重叠度排序，适合小型项目规范、模板、案例和流程文档。
+
+## Skill 设计
+
+项目沉淀了多类可复用 Skill：
+
+| Skill | 作用 |
+|---|---|
+| 项目拆解 Skill | 将模糊目标拆成阶段、任务、重难点和验收标准 |
+| 风险识别 Skill | 识别延期、目标漂移、假进展、质量不稳 |
+| 阶段验收 Skill | 按项目类型检查代码、报告、数据结果 |
+| 日报/周报 Skill | 生成结构化日报和周报，补充证据提醒和导师同步判断 |
+| 导师介入 Skill | 判断什么时候需要提醒实习生与导师同步 |
+
+日报/周报 Skill 的核心目标是：
+
+```text
+把零散的工作描述 → 转换成结构规范、证据清楚、可用于导师同步的实习日报/周报
+```
+
+典型目录：
+
+```text
+skills/
+└── ta-daily-weekly-report/
+    ├── SKILL.md
+    ├── references/
+    │   └── report_templates.md
+    └── agents/
+        └── openai.yaml
+```
+
+## Harness 设计
+
+Harness 是 Agent 的受控运行层，负责回答三个问题：
+
+1. 什么时候启动一次检查？
+2. 哪些动作可以执行？
+3. 越权、异常或证据不足时如何安全停止并留下记录？
+
+核心机制包括：
+
+- 触发规则：日报提交、里程碑到期、连续无进展、风险升高、人工复核。
+- 权限控制：只读优先，高风险动作需要人工确认。
+- 证据闸门：风险判断必须引用本次运行中成功读取的证据。
+- 异常处理：证据不足或工具失败时标记 `NEED_REVIEW`。
+- 审计日志：保存工具调用、风险判断、审批人和通知记录。
+
+## 量化评测
+
+评测集覆盖当前系统核心能力，包括：
+
+- 日报/周报生成
+- 项目计划拆解
+- 项目进度查询
+- 导师同步判断
+- 产物质量识别
+
+评测采用两层结构：
+
+| 层级 | 评测内容 |
+|---|---|
+| 功能层 | 意图是否正确、字段是否完整、关键词/事实是否覆盖、规则判断是否正确 |
+| Agent 机制层 | 是否调用预期 Skill、Tool、Memory/State、Trace，步骤预算是否合理 |
+
+综合分计算：
+
+```text
+综合分 = 功能分 × 70% + Agent机制分 × 30%
+```
+
+运行评测：
 
 ```bash
-cp .env.example .env
+python -m pico.ta.ta_benchmark_eval \
+  --benchmark benchmarks/ta_tasks.json \
+  --output benchmarks/results/ta-agent-eval-2026-07-16/ta-integrated-benchmark-v3.json
 ```
 
-然后把要使用的 provider key 填进去。`.env` 已经被 `.gitignore` 忽略，不要提交真实 key。
+当前样例评测结果：
 
-### 推荐配置：DeepSeek
+| 指标 | 结果 |
+|---|---:|
+| 任务通过率 | 90% |
+| 综合平均分 | 96% |
+| 执行成功率 | 100% |
+| 意图准确率 | 100% |
+| 功能检查通过率 | 98% |
+| Agent 机制平均分 | 89% |
+| Skill 调用正确率 | 100% |
+| Trace 完整率 | 100% |
 
-最小配置只需要 key：
+## 测试
+
+运行 TA 相关测试：
 
 ```bash
-PICO_DEEPSEEK_API_KEY="your-api-key"
+pytest tests/test_ta_*.py -q
 ```
 
-默认模型和接口是：
+运行全部测试：
 
 ```bash
-PICO_DEEPSEEK_API_BASE="https://api.deepseek.com/anthropic"
-PICO_DEEPSEEK_MODEL="deepseek-v4-pro"
+pytest tests -q
 ```
 
-所以常规情况下 `.env` 里只填 `PICO_DEEPSEEK_API_KEY` 就能直接启动：
+## 安全与隐私
 
-```bash
-uv run pico
+- 默认只读，涉及写入、通知、跨项目访问等高风险操作应人工确认。
+- 项目数据按实习生、项目、导师 Scope 隔离。
+- 不访问其他实习生内容。
+- 不提交真实 webhook、API key、导师信息或实习生隐私数据。
+- 工具失败或证据不足时应停止自动判断，并转人工复核。
+
+## 与原 pico 的关系
+
+原 pico 是一个面向代码仓库的轻量本地 coding agent，重点在于本地执行、工具调用和 trace 持久化。
+
+`picoTA` 在此基础上增加了实习助教场景能力：
+
+```text
+pico 本地 Agent 能力
+        ↓
+Context / Tools / RAG / Skill / Harness
+        ↓
+日报、周报、进度、风险、导师同步
+        ↓
+飞书入口与本地评测
 ```
 
-如果你需要临时切模型或代理地址，不必改 `.env`，可以直接覆盖：
+因此，本项目更像一个“实习项目管理 Agent 原型”，而不是单纯的 coding agent。
 
-```bash
-uv run pico --model deepseek-v4-pro --base-url https://api.deepseek.com/anthropic
-```
 
-DeepSeek 当前走 Anthropic-compatible Messages API，所以 runtime 里复用的是 Anthropic-compatible client；这只影响 HTTP 协议，不影响 CLI 用法。
-
-### 可选配置：right.codes
-
-right.codes 在 Pico 里有两条可选 provider 路径：
-
-- `--provider openai`：走 OpenAI-compatible `/responses`，默认 base URL 是 `https://www.right.codes/codex/v1`，默认模型是 `gpt-5.4`
-- `--provider anthropic`：走 Anthropic-compatible `/messages`，默认 base URL 是 `https://www.right.codes/claude/v1`，默认模型是 `claude-sonnet-4-6`
-
-如果 right.codes 给你的是一把共享 key，推荐只填这一项：
-
-```bash
-PICO_RIGHT_CODES_API_KEY="your-right-codes-key"
-```
-
-然后按需要选择 provider：
-
-```bash
-uv run pico --provider openai
-uv run pico --provider anthropic
-```
-
-如果你想显式区分两条 provider 的 key，也可以分别配置：
-
-```bash
-PICO_OPENAI_API_KEY="your-right-codes-key-for-codex"
-PICO_ANTHROPIC_API_KEY="your-right-codes-key-for-claude"
-```
-
-不要在 `.env` 里写 `PICO_OPENAI_API_KEY=$PICO_RIGHT_CODES_API_KEY` 这种 shell 展开形式；Pico 的 `.env` 解析器只读取字面量，不展开变量引用。要么只写 `PICO_RIGHT_CODES_API_KEY`，要么把 key 字符串分别填到 provider-specific 变量里。
-
-如果请求 right.codes 返回 `API Key额度不足`，说明协议和 endpoint 已经打通，但当前 key 没有可用额度；换一把有额度的 key，或到 right.codes 后台处理额度。
-
-当前 provider 环境变量：
-
-| provider | base URL | API key | model |
-| --- | --- | --- | --- |
-| `deepseek` | `PICO_DEEPSEEK_API_BASE`，回退 `DEEPSEEK_API_BASE`，默认 `https://api.deepseek.com/anthropic` | `PICO_DEEPSEEK_API_KEY`，回退 `DEEPSEEK_API_KEY` | `PICO_DEEPSEEK_MODEL`，回退 `DEEPSEEK_MODEL`，默认 `deepseek-v4-pro` |
-| `openai` | `PICO_OPENAI_API_BASE`，回退 `OPENAI_API_BASE`，默认 `https://www.right.codes/codex/v1` | `PICO_OPENAI_API_KEY`，回退 `OPENAI_API_KEY`、`PICO_RIGHT_CODES_API_KEY`、`RIGHT_CODES_API_KEY`、`PICO_ANTHROPIC_API_KEY`、`ANTHROPIC_API_KEY` | `PICO_OPENAI_MODEL`，回退 `OPENAI_MODEL`，默认 `gpt-5.4` |
-| `anthropic` | `PICO_ANTHROPIC_API_BASE`，回退 `ANTHROPIC_API_BASE`，默认 `https://www.right.codes/claude/v1` | `PICO_ANTHROPIC_API_KEY`，回退 `ANTHROPIC_API_KEY`、`PICO_RIGHT_CODES_API_KEY`、`RIGHT_CODES_API_KEY`、`PICO_OPENAI_API_KEY`、`OPENAI_API_KEY` | `PICO_ANTHROPIC_MODEL`，回退 `ANTHROPIC_MODEL`，默认 `claude-sonnet-4-6` |
-| `ollama` | `--host`，默认 `http://127.0.0.1:11434` | 不需要 | `--model`，默认 `qwen3.5:4b` |
-
-如果有额外的敏感环境变量需要从 trace/report 里脱敏，可以用 `PICO_SECRET_ENV_NAMES` 配置逗号分隔的变量名，或启动时重复传 `--secret-env-name NAME`。
-
-### OpenAI 兼容接口
-
-如果要改用 OpenAI-compatible `/responses` 服务，显式传 `--provider openai`：
-
-```bash
-uv run pico --provider openai
-```
-
-默认 OpenAI 兼容接口使用 right.codes 的 Codex endpoint：
-
-```bash
-PICO_OPENAI_API_BASE="https://www.right.codes/codex/v1"
-PICO_RIGHT_CODES_API_KEY="your-right-codes-key"
-PICO_OPENAI_MODEL="gpt-5.4"
-```
-
-也可以改成其他 OpenAI-compatible 服务：
-
-```bash
-PICO_OPENAI_API_BASE="https://your-api.example/v1"
-PICO_OPENAI_API_KEY="your-api-key"
-PICO_OPENAI_MODEL="gpt-5.4"
-```
-
-### Anthropic 兼容接口
-
-如果要改用 Anthropic-compatible 服务，显式传 `--provider anthropic`：
-
-```bash
-uv run pico --provider anthropic
-```
-
-默认 Anthropic 兼容接口使用 right.codes 的 Claude endpoint：
-
-```bash
-PICO_ANTHROPIC_API_BASE="https://www.right.codes/claude/v1"
-PICO_RIGHT_CODES_API_KEY="your-right-codes-key"
-PICO_ANTHROPIC_MODEL="claude-sonnet-4-6"
-```
-
-如果你的服务端对多个兼容接口复用了同一套密钥，`pico` 也支持从 `PICO_ANTHROPIC_API_KEY` 回退到 `ANTHROPIC_API_KEY`、`PICO_RIGHT_CODES_API_KEY`、`RIGHT_CODES_API_KEY`、`PICO_OPENAI_API_KEY` 或 `OPENAI_API_KEY`。
-
-### Ollama
-
-如果要改用本地 Ollama，显式传 `--provider ollama`：
-
-```bash
-ollama serve
-ollama pull qwen3.5:4b
-uv run pico --provider ollama --model qwen3.5:4b
-```
-
-## 常用交互命令
-
-- `/help`：查看内置命令
-- `/memory`：查看提炼后的工作记忆
-- `/session`：查看当前会话文件路径
-- `/reset`：清空当前会话状态
-- `/exit` 或 `/quit`：退出 REPL
-
-## 安全与持久化
-
-`pico` 不会默认把所有动作都放开。像 shell 执行、文件写入这类高风险操作，会受审批模式控制：
-
-- `--approval ask`
-- `--approval auto`
-- `--approval never`
-
-每次运行结束后，都会在 `.pico/runs/<run_id>/` 下写出这些文件：
-
-- `task_state.json`
-- `trace.jsonl`
-- `report.json`
-
-这些内容默认只保存在本地，不需要跟仓库一起提交。
-
-## 开发
-
-常用本地检查：
-
-```bash
-uv run pytest tests -q
-uv run ruff check pico tests scripts
-```
-
-内部代码现在按较轻的边界拆分：`pico/evaluation/` 放 benchmark 和 metrics，`pico/providers/` 放模型 provider client，`pico/features/` 放可选运行时能力。新代码应直接使用这些包路径；旧的 `pico.evaluator`、`pico.metrics`、`pico.models` 和 `pico.memory` import 不再作为公共入口保留。
