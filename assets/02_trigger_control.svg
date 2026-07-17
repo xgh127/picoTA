@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="720" viewBox="0 0 1400 720" role="img" aria-labelledby="title desc">
+  <title id="title">触发控制：有效事件始终留痕，冷却只抑制重复提醒</title>
+  <desc id="desc">统一事件先校验并创建运行，再计算风险指纹和冷却，验证证据后按固定风险分路由。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1"><stop stop-color="#f8fbff"/><stop offset="1" stop-color="#f4f7ff"/></linearGradient>
+    <filter id="s" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="7" stdDeviation="9" flood-color="#1e40af" flood-opacity=".12"/></filter>
+    <marker id="a" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0 0v6l9-3z" fill="#64748b"/></marker>
+    <style>text{font-family:Inter,"Noto Sans CJK SC","Source Han Sans SC","PingFang SC","Microsoft YaHei",sans-serif}.k{font-size:14px;font-weight:800;letter-spacing:1.5px;fill:#2563eb}.h{font-size:30px;font-weight:800}.sub{font-size:15px;fill:#64748b}.t{font-size:17px;font-weight:800}.b{font-size:13px;fill:#475569}.m{font:12px ui-monospace,SFMono-Regular,Consolas,monospace;fill:#334155}.chip{font-size:12px;font-weight:800}.onDark{fill:#f8fafc}</style>
+  </defs>
+  <rect width="1400" height="720" fill="url(#bg)"/>
+  <rect x="42" y="34" width="1316" height="652" rx="28" fill="#fff" stroke="#dbe6f5" filter="url(#s)"/>
+  <text x="82" y="80" class="k">CONTROL POINT 01 / TRIGGER</text>
+  <text x="82" y="119" class="h">冷却不是“丢掉事件”，而是“留痕但不重复提醒”</text>
+  <text x="82" y="148" class="sub">触发器没有通知和写入项目的能力；它只创建检查并给后续权限链附加约束。</text>
+  <rect x="1020" y="70" width="298" height="66" rx="16" fill="#fff7ed" stroke="#fdba74"/>
+  <text x="1040" y="95" class="chip" fill="#c2410c">硬约束</text><text x="1040" y="120" class="b">任何有效事件都要生成可审计 run</text>
+
+  <!-- top flow -->
+  <g filter="url(#s)"><rect x="80" y="208" width="220" height="152" rx="18" fill="#f8fafc" stroke="#cbd5e1"/></g>
+  <text x="102" y="239" class="t">统一事件</text>
+  <text x="102" y="270" class="m"><tspan x="102">event_type</tspan><tspan x="102" dy="20">intern_id / project_id</tspan><tspan x="102" dy="20">occurred_at</tspan><tspan x="102" dy="20">artifact_paths / reason</tspan></text>
+
+  <g filter="url(#s)"><rect x="350" y="208" width="214" height="152" rx="18" fill="#eff6ff" stroke="#93c5fd"/></g>
+  <text x="372" y="239" class="t">校验并创建 run</text>
+  <text x="372" y="270" class="b"><tspan x="372">事件 Schema 合法</tspan><tspan x="372" dy="22">实习生与项目绑定一致</tspan><tspan x="372" dy="22">先写 task_state + run_started</tspan></text>
+  <rect x="372" y="326" width="168" height="24" rx="12" fill="#dbeafe"/><text x="456" y="343" text-anchor="middle" class="chip" fill="#1d4ed8">invalid_event → 无副作用</text>
+
+  <g filter="url(#s)"><rect x="614" y="208" width="224" height="152" rx="18" fill="#f5f3ff" stroke="#c4b5fd"/></g>
+  <text x="636" y="239" class="t">风险指纹</text>
+  <text x="636" y="270" class="m"><tspan x="636">intern_id + project_id</tspan><tspan x="636" dy="20">+ risk_type</tspan><tspan x="636" dy="20">+ milestone_id</tspan></text>
+  <text x="636" y="338" class="b">索引 session 中最近提醒</text>
+
+  <g filter="url(#s)"><rect x="888" y="208" width="214" height="152" rx="18" fill="#fff7ed" stroke="#fdba74"/></g>
+  <text x="910" y="239" class="t">24h 冷却判断</text>
+  <text x="910" y="273" class="b"><tspan x="910">相同指纹 + 无新证据</tspan><tspan x="910" dy="24">且风险未提升 ≥ 20 分？</tspan></text>
+  <rect x="910" y="323" width="170" height="24" rx="12" fill="#ffedd5"/><text x="995" y="340" text-anchor="middle" class="chip" fill="#c2410c">manual_review 仅跳过冷却</text>
+
+  <g filter="url(#s)"><rect x="1152" y="208" width="176" height="152" rx="18" fill="#ecfdf5" stroke="#86efac"/></g>
+  <text x="1174" y="239" class="t">证据闸门</text>
+  <text x="1174" y="270" class="b"><tspan x="1174">本次 run 的成功只读结果</tspan><tspan x="1174" dy="22">同项目 / realpath</tspan><tspan x="1174" dy="22">摘要与引用范围匹配</tspan></text>
+  <rect x="1174" y="326" width="132" height="24" rx="12" fill="#dcfce7"/><text x="1240" y="343" text-anchor="middle" class="chip" fill="#15803d">否则 NEED_REVIEW</text>
+
+  <path d="M300 284h42" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#a)"/><path d="M564 284h42" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#a)"/><path d="M838 284h42" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#a)"/><path d="M1102 284h42" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#a)"/>
+
+  <!-- branch result -->
+  <rect x="80" y="414" width="482" height="188" rx="20" fill="#fff7ed" stroke="#fdba74"/>
+  <rect x="104" y="438" width="140" height="28" rx="14" fill="#ffedd5"/><text x="174" y="457" text-anchor="middle" class="chip" fill="#c2410c">冷却命中</text>
+  <text x="104" y="500" class="t">本次 run 仍然结束并写 report</text>
+  <text x="104" y="532" class="b"><tspan x="104">trigger_result = suppressed</tspan><tspan x="104" dy="24">suppressed_by_cooldown = true</tspan><tspan x="104" dy="24">notify_calls = 0</tspan></text>
+  <path d="M995 360v28H321v18" stroke="#f97316" stroke-width="2" fill="none" marker-end="url(#a)"/>
+
+  <rect x="594" y="414" width="734" height="188" rx="20" fill="#f8fafc" stroke="#cbd5e1"/>
+  <rect x="618" y="438" width="168" height="28" rx="14" fill="#dcfce7"/><text x="702" y="457" text-anchor="middle" class="chip" fill="#15803d">首次 / 新证据 / 风险升级</text>
+  <text x="618" y="500" class="t">固定规则路由，模型不能自报分数</text>
+  <g>
+    <rect x="618" y="526" width="154" height="50" rx="12" fill="#f1f5f9"/><text x="695" y="547" text-anchor="middle" class="chip">0–29</text><text x="695" y="568" text-anchor="middle" class="b">只写报告</text>
+    <rect x="786" y="526" width="154" height="50" rx="12" fill="#eff6ff"/><text x="863" y="547" text-anchor="middle" class="chip" fill="#1d4ed8">30–59</text><text x="863" y="568" text-anchor="middle" class="b">建议实习生</text>
+    <rect x="954" y="526" width="154" height="50" rx="12" fill="#fef3c7"/><text x="1031" y="547" text-anchor="middle" class="chip" fill="#a16207">60–79</text><text x="1031" y="568" text-anchor="middle" class="b">可申请导师审批</text>
+    <rect x="1122" y="526" width="182" height="50" rx="12" fill="#fee2e2"/><text x="1213" y="547" text-anchor="middle" class="chip" fill="#b91c1c">≥ 80</text><text x="1213" y="568" text-anchor="middle" class="b">人工复核，禁自动外发</text>
+  </g>
+  <path d="M1240 360v28H961v18" stroke="#16a34a" stroke-width="2" fill="none" marker-end="url(#a)"/>
+
+  <rect x="80" y="628" width="1248" height="34" rx="17" fill="#0f172a"/><text x="704" y="650" class="onDark" text-anchor="middle" font-size="13" font-weight="700">触发层只决定“是否检查、是否抑制提醒”；真正的读取、修改和通知全部交给权限执行器。</text>
+</svg>

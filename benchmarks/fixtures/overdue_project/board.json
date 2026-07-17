@@ -1,0 +1,10 @@
+{
+  "milestones": [
+    {"name": "M1: 环境搭建", "status": "completed", "completion_date": "Day 1"},
+    {"name": "M2: 核心模块开发", "status": "overdue", "target_date": "Day 5", "delayed": true}
+  ],
+  "tasks": [
+    {"id": "T1", "description": "用户认证模块", "assignee": "intern", "status": "blocked"},
+    {"id": "T2", "description": "数据库模型设计", "assignee": "intern", "status": "in_progress"}
+  ]
+}

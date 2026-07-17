@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="780" viewBox="0 0 1400 780" role="img" aria-labelledby="title desc">
+  <title id="title">权限控制：模型动作申请经过统一执行器</title>
+  <desc id="desc">工具调用依次经过运行白名单、参数和真实路径校验、重复检查、风险审批、执行差异快照，并返回结构化结果。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1"><stop stop-color="#f7fbff"/><stop offset="1" stop-color="#f2fbf7"/></linearGradient>
+    <filter id="s" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="7" stdDeviation="9" flood-color="#14532d" flood-opacity=".12"/></filter>
+    <marker id="a" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0 0v6l9-3z" fill="#64748b"/></marker>
+    <style>text{font-family:Inter,"Noto Sans CJK SC","Source Han Sans SC","PingFang SC","Microsoft YaHei",sans-serif}.k{font-size:14px;font-weight:800;letter-spacing:1.5px;fill:#15803d}.h{font-size:30px;font-weight:800}.sub{font-size:15px;fill:#64748b}.t{font-size:16px;font-weight:800}.b{font-size:12.5px;fill:#475569}.m{font:12px ui-monospace,SFMono-Regular,Consolas,monospace;fill:#334155}.chip{font-size:11.5px;font-weight:800}.onDark{fill:#f8fafc}.onDarkMuted{fill:#cbd5e1}.onDarkBlue{fill:#bfdbfe}</style>
+  </defs>
+  <rect width="1400" height="780" fill="url(#bg)"/>
+  <rect x="42" y="34" width="1316" height="712" rx="28" fill="#fff" stroke="#dbe6f5" filter="url(#s)"/>
+  <text x="82" y="80" class="k">CONTROL POINT 02 / PERMISSION</text>
+  <text x="82" y="119" class="h">模型只提交 ToolCall，运行时才决定动作是否发生</text>
+  <text x="82" y="148" class="sub">校验顺序固定；任何一步失败都在真实函数调用前返回 rejected，且必须留下机器可读元数据。</text>
+  <rect x="1038" y="68" width="280" height="68" rx="16" fill="#ecfdf5" stroke="#86efac"/>
+  <text x="1058" y="94" class="chip" fill="#15803d">双重白名单</text><text x="1058" y="118" class="b">注册工具集合 ∩ 本次 allowed_tools</text>
+
+  <!-- executor chain -->
+  <g filter="url(#s)"><rect x="76" y="205" width="178" height="140" rx="18" fill="#f8fafc" stroke="#cbd5e1"/></g>
+  <circle cx="100" cy="229" r="13" fill="#64748b"/><text x="100" y="234" text-anchor="middle" font-size="12" font-weight="800" fill="#fff">1</text>
+  <text x="122" y="235" class="t">解析模型输出</text>
+  <text x="96" y="272" class="m"><tspan x="96">model_parsed: tool</tspan><tspan x="96" dy="21">name + args</tspan></text>
+  <text x="96" y="322" class="b">final / retry 不进入执行器</text>
+
+  <g filter="url(#s)"><rect x="284" y="205" width="188" height="140" rx="18" fill="#eff6ff" stroke="#93c5fd"/></g>
+  <circle cx="308" cy="229" r="13" fill="#2563eb"/><text x="308" y="234" text-anchor="middle" font-size="12" font-weight="800" fill="#fff">2</text>
+  <text x="330" y="235" class="t">白名单查找</text>
+  <text x="304" y="272" class="b"><tspan x="304">本次 allowed_tools?</tspan><tspan x="304" dy="22">工具是否已注册?</tspan></text>
+  <text x="304" y="322" class="m">tool_not_allowed</text>
+
+  <g filter="url(#s)"><rect x="502" y="205" width="214" height="140" rx="18" fill="#f5f3ff" stroke="#c4b5fd"/></g>
+  <circle cx="526" cy="229" r="13" fill="#7c3aed"/><text x="526" y="234" text-anchor="middle" font-size="12" font-weight="800" fill="#fff">3</text>
+  <text x="548" y="235" class="t">参数 + 路径</text>
+  <text x="522" y="270" class="b"><tspan x="522">Schema / 类型 / 范围</tspan><tspan x="522" dy="22">resolve 后检查 commonpath</tspan><tspan x="522" dy="22">防 ../、绝对路径、符号链接</tspan></text>
+  <text x="522" y="329" class="m">invalid_arguments + path_escape</text>
+
+  <g filter="url(#s)"><rect x="746" y="205" width="182" height="140" rx="18" fill="#fff7ed" stroke="#fdba74"/></g>
+  <circle cx="770" cy="229" r="13" fill="#ea580c"/><text x="770" y="234" text-anchor="middle" font-size="12" font-weight="800" fill="#fff">4</text>
+  <text x="792" y="235" class="t">重复调用检查</text>
+  <text x="766" y="272" class="b"><tspan x="766">最近两次 name + args</tspan><tspan x="766" dy="22">均与本次完全相同?</tspan></text>
+  <text x="766" y="322" class="m">repeated_identical_call</text>
+
+  <g filter="url(#s)"><rect x="958" y="205" width="182" height="140" rx="18" fill="#fefce8" stroke="#fde047"/></g>
+  <circle cx="982" cy="229" r="13" fill="#ca8a04"/><text x="982" y="234" text-anchor="middle" font-size="12" font-weight="800" fill="#fff">5</text>
+  <text x="1004" y="235" class="t">风险与审批</text>
+  <text x="978" y="270" class="b"><tspan x="978">只读：自动允许</tspan><tspan x="978" dy="22">高风险：ask / never / auto</tspan><tspan x="978" dy="22">正式环境默认 ask</tspan></text>
+  <text x="978" y="329" class="m">approval_denied</text>
+
+  <g filter="url(#s)"><rect x="1170" y="205" width="172" height="140" rx="18" fill="#ecfdf5" stroke="#86efac"/></g>
+  <circle cx="1194" cy="229" r="13" fill="#16a34a"/><text x="1194" y="234" text-anchor="middle" font-size="12" font-weight="800" fill="#fff">6</text>
+  <text x="1216" y="235" class="t">执行与快照</text>
+  <text x="1190" y="270" class="b"><tspan x="1190">高风险动作执行前后</tspan><tspan x="1190" dy="22">比较 workspace snapshot</tspan><tspan x="1190" dy="22">记录 diff_summary</tspan></text>
+
+  <path d="M254 275h22" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/><path d="M472 275h22" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/><path d="M716 275h22" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/><path d="M928 275h22" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/><path d="M1140 275h22" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+
+  <!-- policy matrix -->
+  <rect x="76" y="394" width="642" height="188" rx="20" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="102" y="427" class="t">助教动作策略</text>
+  <rect x="102" y="449" width="180" height="46" rx="11" fill="#dcfce7"/><text x="116" y="469" class="chip" fill="#15803d">自动允许 · 只读</text><text x="116" y="488" class="b">列出 / 读取 / 搜索当前项目</text>
+  <rect x="300" y="449" width="180" height="46" rx="11" fill="#fef3c7"/><text x="314" y="469" class="chip" fill="#a16207">实习生确认</text><text x="314" y="488" class="b">提出状态更新，不改原材料</text>
+  <rect x="498" y="449" width="194" height="46" rx="11" fill="#ffedd5"/><text x="512" y="469" class="chip" fill="#c2410c">证据通过 + 人工审批</text><text x="512" y="488" class="b">notify_mentor</text>
+  <rect x="102" y="511" width="590" height="46" rx="11" fill="#fee2e2"/><text x="116" y="531" class="chip" fill="#b91c1c">不注册，永久拒绝</text><text x="116" y="550" class="b">代写 / 修改实习生产物 / 删除 / 任意系统命令 / 跨项目读取</text>
+
+  <!-- metadata result -->
+  <rect x="748" y="394" width="594" height="188" rx="20" fill="#0f172a"/>
+  <text x="774" y="427" class="onDark" font-size="16" font-weight="800">ToolExecutionResult = content + metadata</text>
+  <text x="774" y="457" class="m onDarkBlue"><tspan x="774">tool_status: ok | rejected | error | partial_success</tspan><tspan x="774" dy="23">tool_error_code: tool_not_allowed | invalid_arguments | …</tspan><tspan x="774" dy="23">security_event_type: path_escape | approval_denied | …</tspan><tspan x="774" dy="23">read_only · affected_paths · workspace_changed · diff_summary</tspan></text>
+  <rect x="774" y="544" width="534" height="24" rx="12" fill="#1e293b"/><text x="1041" y="561" text-anchor="middle" class="chip onDarkMuted">文本给 Agent 恢复；metadata 给 Harness、Trace 和 Verifier</text>
+
+  <!-- rejected funnel -->
+  <path d="M378 345v39M609 345v39M837 345v39M1049 345v39" stroke="#ef4444" stroke-width="1.7" stroke-dasharray="5 4"/>
+  <rect x="76" y="614" width="1266" height="82" rx="18" fill="#eff6ff" stroke="#93c5fd"/>
+  <text x="102" y="645" class="t">审批的可量化结果</text>
+  <text x="102" y="675" class="b">`notify_mentor` 被拒绝或证据不足时：工具结果为 rejected，底层 notify() 调用次数必须保持 0，affected_paths 必须为空；不能只检查 Agent 是否说“没有发送”。</text>
+</svg>

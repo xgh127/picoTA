@@ -117,6 +117,7 @@ class Pico:
         self.last_durable_superseded = []
         # TODO[C]: 兰凯崴 — 实例化 AuditSink，在 emit_trace 中转发审计日志
         self._audit_sink = None
+        self._intern_id = "anonymous"
         self._last_tool_result_metadata = {}
         self._last_prefix_refresh = {
             "workspace_changed": False,
@@ -181,11 +182,13 @@ class Pico:
         del bucket[:-limit]
 
     def build_tools(self):
-        # TODO[B]: 徐国洪 — 当 persona="ta" 时，合并 TA 工具集：
-        #   base_tools = toolkit.build_tool_registry(self.tool_context())
-        #   ta_tools = ta.tools.build_ta_tool_registry(self.tool_context())
-        #   return {**base_tools, **ta_tools}
-        return toolkit.build_tool_registry(self.tool_context())
+        # persona="ta" 时合并 TA 工具集：只读工具 + notify_mentor。
+        base_tools = toolkit.build_tool_registry(self.tool_context())
+        if self.persona == "ta":
+            from .ta.tools import build_ta_tool_registry
+            ta_tools = build_ta_tool_registry(self.tool_context())
+            base_tools = {**base_tools, **ta_tools}
+        return base_tools
 
     @staticmethod
     def _normalize_allowed_tools(allowed_tools):
@@ -354,9 +357,14 @@ class Pico:
         payload["created_at"] = now()
         # trace 是运行中的逐事件时间线，适合回答"这一轮 agent 到底做了什么"。
         self.run_store.append_trace(task_state, payload)
-        # TODO[C]: 兰凯崴 — 将 trace 转发一份到 audit sink
-        # if self._audit_sink:
-        #     self._audit_sink.emit(event, payload, intern_id=self._intern_id())
+        # 审计旁路：把同一份 trace 转发到 audit.jsonl，
+        # 让审计时间线和运行 trace 共用同一条证据链。
+        if self._audit_sink is not None:
+            self._audit_sink.emit(
+                event,
+                payload,
+                intern_id=getattr(self, "_intern_id", "anonymous"),
+            )
         return payload
 
     def capture_workspace_snapshot(self):
@@ -680,8 +688,45 @@ class Pico:
         Returns:
             {"status": "ok" | "NEED_REVIEW", "risks": [...], "escalated": bool}
         """
-        # TODO[C]: 实现五元组校验和升级逻辑
-        return {"status": "ok", "risks": [], "escalated": False}
+        from .ta.harness import validate_and_maybe_escalate as _run_validation
+
+        # 收集本次 run 的 trace 事件，供证据闸门绑定
+        trace_events = []
+        if self.current_task_state is not None:
+            trace_path = self.run_store.trace_path(self.current_task_state)
+            if trace_path.exists():
+                import json as _json
+                with trace_path.open("r", encoding="utf-8") as handle:
+                    for line in handle:
+                        line = line.strip()
+                        if line:
+                            trace_events.append(_json.loads(line))
+
+        result = _run_validation(
+            final_answer,
+            project_root=str(self.root),
+            run_id=getattr(self.current_task_state, "run_id", "") if self.current_task_state else "",
+            trace_events=trace_events,
+        )
+
+        # 写 escalation trace，让审计时间线能回放
+        if self.current_task_state is not None and result.get("status") != "ok":
+            self.emit_trace(
+                self.current_task_state,
+                "escalation",
+                {
+                    "status": result.get("status"),
+                    "reason": result.get("reason", ""),
+                    "score": result.get("score", 0),
+                    "coverage": result.get("coverage", 0.0),
+                    "risks": result.get("risks", []),
+                },
+            )
+
+        # 在 report 中记录 escalation 状态
+        self._last_escalation_status = result.get("status", "ok")
+        self._last_escalation_result = result
+        return result
 
     @staticmethod
     def parse(raw):

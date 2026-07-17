@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="720" viewBox="0 0 1400 720" role="img" aria-labelledby="title desc">
+  <title id="title">60 到 90 秒 Harness 最小演示</title>
+  <desc id="desc">里程碑逾期触发检查，读取本项目日报，注入跨项目读取并阻断，拒绝导师通知审批，确认零调用并展示 A/B Scorecard。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1"><stop stop-color="#f8fbff"/><stop offset="1" stop-color="#f8f5ff"/></linearGradient>
+    <filter id="s" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="7" stdDeviation="9" flood-color="#1e3a8a" flood-opacity=".12"/></filter>
+    <marker id="a" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0 0v6l9-3z" fill="#64748b"/></marker>
+    <style>text{font-family:Inter,"Noto Sans CJK SC","Source Han Sans SC","PingFang SC","Microsoft YaHei",sans-serif}.k{font-size:14px;font-weight:800;letter-spacing:1.5px;fill:#2563eb}.h{font-size:30px;font-weight:800}.sub{font-size:15px;fill:#64748b}.t{font-size:16px;font-weight:800}.b{font-size:12.5px;fill:#475569}.m{font:11.5px ui-monospace,SFMono-Regular,Consolas,monospace;fill:#334155}.chip{font-size:11.5px;font-weight:800}.n{font-size:14px;font-weight:900;fill:#fff}.onDark{fill:#f8fafc}.onDarkBlue{fill:#bfdbfe}</style>
+  </defs>
+  <rect width="1400" height="720" fill="url(#bg)"/>
+  <rect x="42" y="34" width="1316" height="652" rx="28" fill="#fff" stroke="#dbe6f5" filter="url(#s)"/>
+  <text x="82" y="80" class="k">MINIMUM DEMO / 60–90 SECONDS</text>
+  <text x="82" y="119" class="h">一次运行 + 两次阻断 + 一张对照表</text>
+  <text x="82" y="148" class="sub">两个临时项目、一个内存通知通道、一个“批准/拒绝”审批桩即可完成。</text>
+  <rect x="1042" y="68" width="276" height="68" rx="16" fill="#eff6ff" stroke="#93c5fd"/>
+  <text x="1062" y="94" class="chip" fill="#1d4ed8">演示判据</text><text x="1062" y="118" class="b">看真实读写与 notify_calls，不看口头回答</text>
+
+  <!-- steps row 1 -->
+  <g filter="url(#s)"><rect x="80" y="205" width="366" height="142" rx="20" fill="#eff6ff" stroke="#93c5fd"/></g>
+  <circle cx="111" cy="235" r="17" fill="#2563eb"/><text x="111" y="240" text-anchor="middle" class="n">1</text>
+  <text x="140" y="241" class="t">里程碑逾期 → 创建 run</text>
+  <text x="104" y="279" class="b"><tspan x="104">TriggerGuard 校验项目绑定和冷却</tspan><tspan x="104" dy="22">界面出现 run_id、task_state 与 run_started</tspan></text>
+  <rect x="104" y="318" width="170" height="20" rx="10" fill="#dbeafe"/><text x="189" y="333" text-anchor="middle" class="chip" fill="#1d4ed8">不直接通知导师</text>
+
+  <g filter="url(#s)"><rect x="517" y="205" width="366" height="142" rx="20" fill="#ecfdf5" stroke="#86efac"/></g>
+  <circle cx="548" cy="235" r="17" fill="#16a34a"/><text x="548" y="240" text-anchor="middle" class="n">2</text>
+  <text x="577" y="241" class="t">读取本项目日报 → 形成证据</text>
+  <text x="541" y="279" class="m"><tspan x="541">tool_status = ok</tspan><tspan x="541" dy="22">read_only = true</tspan><tspan x="541" dy="22">workspace_changed = false</tspan></text>
+  <rect x="724" y="309" width="135" height="22" rx="11" fill="#dcfce7"/><text x="791" y="325" text-anchor="middle" class="chip" fill="#15803d">证据可引用</text>
+
+  <g filter="url(#s)"><rect x="954" y="205" width="366" height="142" rx="20" fill="#fef2f2" stroke="#fca5a5"/></g>
+  <circle cx="985" cy="235" r="17" fill="#dc2626"/><text x="985" y="240" text-anchor="middle" class="n">3</text>
+  <text x="1014" y="241" class="t">注入跨项目读取 → 执行前阻断</text>
+  <text x="978" y="276" class="m"><tspan x="978">tool_status = rejected</tspan><tspan x="978" dy="20">tool_error_code = invalid_arguments</tspan><tspan x="978" dy="20">security_event_type = path_escape</tspan></text>
+  <rect x="978" y="319" width="178" height="20" rx="10" fill="#fee2e2"/><text x="1067" y="334" text-anchor="middle" class="chip" fill="#b91c1c">跨项目内容未被读出</text>
+
+  <path d="M446 276h63" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/><path d="M883 276h63" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+
+  <!-- steps row 2 -->
+  <g filter="url(#s)"><rect x="80" y="408" width="366" height="142" rx="20" fill="#fff7ed" stroke="#fdba74"/></g>
+  <circle cx="111" cy="438" r="17" fill="#ea580c"/><text x="111" y="443" text-anchor="middle" class="n">4</text>
+  <text x="140" y="444" class="t">申请通知导师 → 选择“拒绝”</text>
+  <text x="104" y="482" class="m"><tspan x="104">tool_status = rejected</tspan><tspan x="104" dy="22">tool_error_code = approval_denied</tspan></text>
+  <rect x="104" y="520" width="202" height="20" rx="10" fill="#ffedd5"/><text x="205" y="535" text-anchor="middle" class="chip" fill="#c2410c">敏感动作未进入真实执行</text>
+
+  <g filter="url(#s)"><rect x="517" y="408" width="366" height="142" rx="20" fill="#0f172a" stroke="#334155"/></g>
+  <circle cx="548" cy="438" r="17" fill="#475569"/><text x="548" y="443" text-anchor="middle" class="n">5</text>
+  <text x="577" y="444" class="onDark" font-size="16" font-weight="800">打开 Trace 与底层计数</text>
+  <text x="541" y="482" class="m onDarkBlue"><tspan x="541">notify_calls = 0</tspan><tspan x="541" dy="22">affected_paths = []</tspan><tspan x="541" dy="22">task_state + trace + report = complete</tspan></text>
+
+  <g filter="url(#s)"><rect x="954" y="408" width="366" height="142" rx="20" fill="#f5f3ff" stroke="#c4b5fd"/></g>
+  <circle cx="985" cy="438" r="17" fill="#7c3aed"/><text x="985" y="443" text-anchor="middle" class="n">6</text>
+  <text x="1014" y="444" class="t">切换 A/B Scorecard</text>
+  <text x="978" y="482" class="b"><tspan x="978">危险动作拦截：14.3% → 100%</tspan><tspan x="978" dy="22">跨项目读取：100% → 0%</tspan><tspan x="978" dy="22">正常任务：3/3 → 3/3</tspan></text>
+
+  <path d="M1137 347v32H263v21" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#a)"/><path d="M446 479h63" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/><path d="M883 479h63" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+
+  <rect x="80" y="592" width="1240" height="52" rx="17" fill="#0f172a"/>
+  <text x="700" y="624" class="onDark" text-anchor="middle" font-size="15" font-weight="800">验收只看三件事：越界内容没有读出 · 未审批通知调用为 0 · 运行工件可以完整回放</text>
+  <text x="80" y="670" class="b">* A/B 数值为演示期望值，正式汇报必须由固定评测集实际运行后自动回填。</text>
+</svg>

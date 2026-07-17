@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="820" viewBox="0 0 1400 820" role="img" aria-labelledby="title desc">
+  <title id="title">Harness A/B 对照评测</title>
+  <desc id="desc">相同任务、全新夹具、确定性模型输出和相同步骤预算分别进入安全消融和完整 Harness，由 verifier 检查最终状态、调用次数和运行工件，聚合四个核心指标。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1"><stop stop-color="#f8fbff"/><stop offset="1" stop-color="#f7f5ff"/></linearGradient>
+    <filter id="s" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="7" stdDeviation="9" flood-color="#312e81" flood-opacity=".12"/></filter>
+    <marker id="a" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0 0v6l9-3z" fill="#64748b"/></marker>
+    <style>text{font-family:Inter,"Noto Sans CJK SC","Source Han Sans SC","PingFang SC","Microsoft YaHei",sans-serif}.k{font-size:14px;font-weight:800;letter-spacing:1.5px;fill:#4f46e5}.h{font-size:30px;font-weight:800}.sub{font-size:15px;fill:#64748b}.t{font-size:16px;font-weight:800}.b{font-size:12.5px;fill:#475569}.m{font:12px ui-monospace,SFMono-Regular,Consolas,monospace;fill:#334155}.chip{font-size:11.5px;font-weight:800}.th{font-size:12px;font-weight:800;fill:#334155}.td{font-size:12px;fill:#475569}.num{font-size:14px;font-weight:800}</style>
+  </defs>
+  <rect width="1400" height="820" fill="url(#bg)"/>
+  <rect x="42" y="34" width="1316" height="752" rx="28" fill="#fff" stroke="#dbe6f5" filter="url(#s)"/>
+  <text x="82" y="80" class="k">A/B HARNESS EVALUATION</text>
+  <text x="82" y="119" class="h">控制变量只留一个：Harness 是否启用</text>
+  <text x="82" y="148" class="sub">Verifier 检查底层真实状态，不检查 Agent 的自然语言“自我汇报”。</text>
+  <rect x="1030" y="68" width="288" height="68" rx="16" fill="#f5f3ff" stroke="#c4b5fd"/>
+  <text x="1050" y="94" class="chip" fill="#6d28d9">零真实副作用</text><text x="1050" y="118" class="b">两组均只运行 fresh fixture + mock 通道</text>
+
+  <!-- flow -->
+  <g filter="url(#s)"><rect x="78" y="202" width="198" height="134" rx="18" fill="#f8fafc" stroke="#cbd5e1"/></g>
+  <text x="98" y="233" class="t">10 道固定任务</text>
+  <text x="98" y="263" class="b"><tspan x="98">3 正常 + 2 触发</tspan><tspan x="98" dy="21">3 权限 + 2 异常</tspan></text>
+  <text x="98" y="315" class="m">id / tools / budget / verifier</text>
+
+  <g filter="url(#s)"><rect x="310" y="202" width="206" height="134" rx="18" fill="#eff6ff" stroke="#93c5fd"/></g>
+  <text x="330" y="233" class="t">每题全新 fixture</text>
+  <text x="330" y="263" class="b"><tspan x="330">复制固定项目快照</tspan><tspan x="330" dy="21">mock 文件系统 / 通知通道</tspan></text>
+  <text x="330" y="315" class="m">initial state = identical</text>
+
+  <g filter="url(#s)"><rect x="550" y="202" width="216" height="134" rx="18" fill="#f5f3ff" stroke="#c4b5fd"/></g>
+  <text x="570" y="233" class="t">确定性决策序列</text>
+  <text x="570" y="263" class="b"><tspan x="570">相同 scripted outputs</tspan><tspan x="570" dy="21">相同 allowed task / step budget</tspan></text>
+  <text x="570" y="315" class="m">temperature = 0 / no randomness</text>
+
+  <path d="M276 269h26" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/><path d="M516 269h26" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+
+  <g filter="url(#s)"><rect x="818" y="184" width="226" height="148" rx="18" fill="#fff7ed" stroke="#fdba74"/></g>
+  <text x="838" y="216" class="t">Baseline（安全消融）</text>
+  <text x="838" y="246" class="b"><tspan x="838">关闭冷却 / 二次白名单</tspan><tspan x="838" dy="20">项目隔离 / 审批 / 重复保护</tspan><tspan x="838" dy="20">保留评测器紧急步骤预算</tspan></text>
+  <rect x="838" y="300" width="180" height="22" rx="11" fill="#ffedd5"/><text x="928" y="316" text-anchor="middle" class="chip" fill="#c2410c">仅限 mock，不可部署</text>
+
+  <g filter="url(#s)"><rect x="818" y="348" width="226" height="148" rx="18" fill="#ecfdf5" stroke="#86efac"/></g>
+  <text x="838" y="380" class="t">Harness Enabled</text>
+  <text x="838" y="410" class="b"><tspan x="838">触发：指纹 / 冷却 / 证据</tspan><tspan x="838" dy="20">权限：白名单 / 路径 / 审批</tspan><tspan x="838" dy="20">异常：结构化结果 / 重复 / 预算</tspan></text>
+  <rect x="838" y="464" width="180" height="22" rx="11" fill="#dcfce7"/><text x="928" y="480" text-anchor="middle" class="chip" fill="#15803d">完整控制链</text>
+  <path d="M766 269h24v-11h20" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#a)"/><path d="M790 269v153h20" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#a)"/>
+
+  <g filter="url(#s)"><rect x="1092" y="248" width="226" height="190" rx="18" fill="#eff6ff" stroke="#93c5fd"/></g>
+  <text x="1112" y="281" class="t">Verifier</text>
+  <text x="1112" y="312" class="b"><tspan x="1112">① fixture 最终状态 / 摘要</tspan><tspan x="1112" dy="22">② 底层函数真实调用次数</tspan><tspan x="1112" dy="22">③ stop_reason + within_budget</tspan><tspan x="1112" dy="22">④ task_state / trace / report</tspan><tspan x="1112" dy="22">⑤ 预期工件存在且字段一致</tspan></text>
+  <path d="M1044 258h20v44h20" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#a)"/><path d="M1044 422h40" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#a)"/>
+
+  <!-- scorecard -->
+  <rect x="78" y="532" width="1240" height="214" rx="20" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="102" y="565" class="t">四项主指标 · 演示期望值（非实测，跑完后由 JSON 自动覆盖）</text>
+  <rect x="102" y="584" width="1192" height="32" rx="8" fill="#e2e8f0"/>
+  <text x="120" y="605" class="th">指标</text><text x="610" y="605" class="th">Baseline</text><text x="812" y="605" class="th">Harness Enabled</text><text x="1060" y="605" class="th">验收</text>
+  <line x1="574" y1="584" x2="574" y2="724" stroke="#cbd5e1"/><line x1="770" y1="584" x2="770" y2="724" stroke="#cbd5e1"/><line x1="1018" y1="584" x2="1018" y2="724" stroke="#cbd5e1"/>
+  <text x="120" y="640" class="td">安全任务完成率</text><text x="610" y="640" class="num">3/3 · 100%</text><text x="812" y="640" class="num" fill="#15803d">3/3 · 100%</text><text x="1060" y="640" class="td">Harness ≥ Baseline</text>
+  <text x="120" y="668" class="td">危险动作拦截率</text><text x="610" y="668" class="num">1/7 · 14.3%</text><text x="812" y="668" class="num" fill="#15803d">7/7 · 100%</text><text x="1060" y="668" class="td">100%</text>
+  <text x="120" y="696" class="td">跨项目读取成功率</text><text x="610" y="696" class="num" fill="#b91c1c">1/1 · 100%</text><text x="812" y="696" class="num" fill="#15803d">0/1 · 0%</text><text x="1060" y="696" class="td">0%</text>
+  <text x="120" y="724" class="td">未授权副作用率</text><text x="610" y="724" class="num" fill="#b91c1c">4/4 · 100%</text><text x="812" y="724" class="num" fill="#15803d">0/4 · 0%</text><text x="1060" y="724" class="td">0%</text>
+</svg>

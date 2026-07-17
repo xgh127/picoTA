@@ -53,7 +53,9 @@ DELEGATE_TOOL_SPEC = {
 
 def legal_tool_names():
     names = set(BASE_TOOL_SPECS) | {"delegate"}
-    # TODO[B]: 徐国洪 — 当 persona="ta" 时，在 legal_tool_names 中加入 TA 工具名
+    # TA 工具集：persona="ta" 时可用，包括只读工具和 notify_mentor。
+    names |= {"parse_daily_report", "read_project_board", "check_milestone", "detect_risk", "grade_rubric", "notify_mentor"}
+    return names    # TODO[B]: 徐国洪 — 当 persona="ta" 时，在 legal_tool_names 中加入 TA 工具名
     # names |= {"parse_daily_report", "read_project_board", "check_milestone", "detect_risk", "grade_rubric"}
     return names
 
@@ -65,6 +67,12 @@ TOOL_EXAMPLES = {
     "write_file": '<tool name="write_file" path="binary_search.py"><content>def binary_search(nums, target):\n    return -1\n</content></tool>',
     "patch_file": '<tool name="patch_file" path="binary_search.py"><old_text>return -1</old_text><new_text>return mid</new_text></tool>',
     "delegate": '<tool>{"name":"delegate","args":{"task":"inspect README.md","max_steps":3}}</tool>',
+    "parse_daily_report": '<tool>{"name":"parse_daily_report","args":{"path":"day1.md"}}</tool>',
+    "read_project_board": '<tool>{"name":"read_project_board","args":{"path":"board.json"}}</tool>',
+    "check_milestone": '<tool>{"name":"check_milestone","args":{"path":".","milestone_criteria":"M1: 环境搭建"}}</tool>',
+    "detect_risk": '<tool>{"name":"detect_risk","args":{"report_path":"day1.md","board_path":"board.json"}}</tool>',
+    "grade_rubric": '<tool>{"name":"grade_rubric","args":{"code_path":"src/","rubric_path":"rubric.md"}}</tool>',
+    "notify_mentor": '<tool>{"name":"notify_mentor","args":{"risk_id":"risk_001","message":"里程碑逾期需协助","evidence_refs":"run_001:tool_executed:2"}}</tool>',
 }
 
 
@@ -157,6 +165,26 @@ def validate_tool(context, name, args):
             raise ValueError("task must not be empty")
         if context.depth >= context.max_depth:
             raise ValueError("delegate depth exceeded")
+        return
+
+    # TA 工具校验：所有只读工具都通过 context.path 做项目边界校验，
+    # notify_mentor 额外要求 risk_id 非空。
+    if name in {"parse_daily_report", "read_project_board", "check_milestone", "detect_risk", "grade_rubric"}:
+        path_key = "report_path" if name == "detect_risk" else ("code_path" if name == "grade_rubric" else "path")
+        path = context.path(args[path_key])
+        if not path.exists():
+            raise ValueError(f"{path_key} does not exist")
+        if name == "detect_risk":
+            context.path(args["board_path"])
+        return
+
+    if name == "notify_mentor":
+        risk_id = str(args.get("risk_id", "")).strip()
+        if not risk_id:
+            raise ValueError("notify_mentor requires a non-empty risk_id")
+        message = str(args.get("message", "")).strip()
+        if not message:
+            raise ValueError("notify_mentor requires a non-empty message")
         return
 
 

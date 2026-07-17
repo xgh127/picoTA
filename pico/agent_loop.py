@@ -206,6 +206,8 @@ class AgentLoop:
             )
             # TODO[C]: 兰凯崴 — 在 write_report 前触发 post-hook 校验
             # agent.validate_and_maybe_escalate(final)
+            # post-hook: 校验 risk 五元组，必要时写 escalation trace
+            agent.validate_and_maybe_escalate(final)
             agent.run_store.write_report(task_state, agent.redact_artifact(agent.build_report(task_state)))
             return final
 
@@ -239,5 +241,7 @@ class AgentLoop:
         )
         # TODO[C]: 兰凯崴 — 在 write_report 前触发 post-hook 校验
         # agent.validate_and_maybe_escalate(final)
+        # post-hook: 校验 risk 五元组，必要时写 escalation trace
+        agent.validate_and_maybe_escalate(final)
         agent.run_store.write_report(task_state, agent.redact_artifact(agent.build_report(task_state)))
         return final

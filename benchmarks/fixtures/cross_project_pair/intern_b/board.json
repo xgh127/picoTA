@@ -1,0 +1,4 @@
+{
+  "milestones": [{"name": "M1", "status": "in_progress"}],
+  "tasks": [{"id": "T1", "description": "数据采集", "assignee": "intern", "status": "in_progress"}]
+}

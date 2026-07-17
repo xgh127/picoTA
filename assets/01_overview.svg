@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="760" viewBox="0 0 1400 760" role="img" aria-labelledby="title desc">
+  <title id="title">助教 Agent Harness 受控运行主链</title>
+  <desc id="desc">事件经过触发控制创建运行，Agent 循环提出动作，权限执行器返回结构化结果，异常策略决定继续或停止，状态与轨迹持续落盘。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#f8fbff"/><stop offset="1" stop-color="#eef4ff"/></linearGradient>
+    <linearGradient id="hero" x1="0" x2="1"><stop stop-color="#1d4ed8"/><stop offset="1" stop-color="#4f46e5"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#1e3a8a" flood-opacity=".12"/></filter>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#64748b"/></marker>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/></marker>
+    <style>
+      text{font-family:Inter,"Noto Sans CJK SC","Source Han Sans SC","PingFang SC","Microsoft YaHei",sans-serif}.kicker{font-size:14px;font-weight:700;letter-spacing:2px;fill:#2563eb}.h1{font-size:31px;font-weight:800}.sub{font-size:15px;fill:#64748b}.n{font-size:13px;font-weight:800;fill:#fff}.cardTitle{font-size:18px;font-weight:800}.body{font-size:13px;fill:#475569}.mono{font:12px ui-monospace,SFMono-Regular,Consolas,monospace;fill:#334155}.chip{font-size:12px;font-weight:800}.small{font-size:12px;fill:#64748b}.onDark{fill:#f8fafc}.onDarkMuted{fill:#cbd5e1}.onDarkBlue{fill:#60a5fa}
+    </style>
+  </defs>
+  <rect width="1400" height="760" fill="url(#bg)"/>
+  <rect x="42" y="34" width="1316" height="692" rx="28" fill="#fff" stroke="#dbe6f5" filter="url(#shadow)"/>
+  <text x="82" y="82" class="kicker">HARNESS / CONTROL PLANE</text>
+  <text x="82" y="122" class="h1">一次助教检查，只有一条可执行主链</text>
+  <text x="82" y="151" class="sub">模型只能提出动作申请；运行时决定是否执行，并用同一个 run_id 留下状态、轨迹与报告。</text>
+
+  <rect x="1040" y="70" width="278" height="64" rx="16" fill="#eff6ff" stroke="#bfdbfe"/>
+  <text x="1060" y="94" class="chip" fill="#1d4ed8">核心证明</text>
+  <text x="1060" y="118" class="body">不看“声称完成”，只看真实调用与工件</text>
+
+  <!-- control chips -->
+  <rect x="255" y="185" width="142" height="28" rx="14" fill="#dbeafe"/><text x="326" y="204" text-anchor="middle" class="chip" fill="#1d4ed8">① 触发控制</text>
+  <rect x="845" y="185" width="142" height="28" rx="14" fill="#dcfce7"/><text x="916" y="204" text-anchor="middle" class="chip" fill="#15803d">② 权限控制</text>
+  <rect x="1080" y="185" width="142" height="28" rx="14" fill="#ffedd5"/><text x="1151" y="204" text-anchor="middle" class="chip" fill="#c2410c">③ 异常控制</text>
+
+  <!-- main cards -->
+  <g filter="url(#shadow)"><rect x="76" y="230" width="178" height="146" rx="18" fill="#f8fafc" stroke="#cbd5e1"/></g>
+  <circle cx="102" cy="256" r="14" fill="#64748b"/><text x="102" y="261" text-anchor="middle" class="n">1</text>
+  <text x="124" y="263" class="cardTitle">项目事件</text>
+  <text x="96" y="299" class="body"><tspan x="96" dy="0">日报提交</tspan><tspan x="96" dy="23">里程碑到期</tspan><tspan x="96" dy="23">人工复核</tspan></text>
+
+  <g filter="url(#shadow)"><rect x="286" y="230" width="202" height="146" rx="18" fill="#eff6ff" stroke="#93c5fd"/></g>
+  <circle cx="312" cy="256" r="14" fill="#2563eb"/><text x="312" y="261" text-anchor="middle" class="n">2</text>
+  <text x="334" y="263" class="cardTitle">TriggerGuard</text>
+  <text x="306" y="299" class="body"><tspan x="306">事件校验 · 项目绑定</tspan><tspan x="306" dy="23">风险指纹 · 24h 冷却</tspan><tspan x="306" dy="23">只创建检查，不做副作用</tspan></text>
+
+  <g filter="url(#shadow)"><rect x="520" y="230" width="184" height="146" rx="18" fill="#f5f3ff" stroke="#c4b5fd"/></g>
+  <circle cx="546" cy="256" r="14" fill="#7c3aed"/><text x="546" y="261" text-anchor="middle" class="n">3</text>
+  <text x="568" y="263" class="cardTitle">RunStore</text>
+  <text x="540" y="299" class="body"><tspan x="540">生成 run_id / task_id</tspan><tspan x="540" dy="23">先写 task_state.json</tspan><tspan x="540" dy="23">追加 run_started</tspan></text>
+
+  <g filter="url(#shadow)"><rect x="736" y="230" width="190" height="146" rx="18" fill="#fff7ed" stroke="#fdba74"/></g>
+  <circle cx="762" cy="256" r="14" fill="#ea580c"/><text x="762" y="261" text-anchor="middle" class="n">4</text>
+  <text x="784" y="263" class="cardTitle">AgentLoop</text>
+  <text x="756" y="299" class="body"><tspan x="756">parse：tool / final / retry</tspan><tspan x="756" dy="23">tool_steps ≤ 6</tspan><tspan x="756" dy="23">attempts ≤ 18</tspan></text>
+
+  <g filter="url(#shadow)"><rect x="958" y="230" width="214" height="146" rx="18" fill="#ecfdf5" stroke="#86efac"/></g>
+  <circle cx="984" cy="256" r="14" fill="#16a34a"/><text x="984" y="261" text-anchor="middle" class="n">5</text>
+  <text x="1006" y="263" class="cardTitle">ActionExecutor</text>
+  <text x="978" y="299" class="body"><tspan x="978">allowed_tools → 参数/路径</tspan><tspan x="978" dy="23">重复调用 → 审批</tspan><tspan x="978" dy="23">执行前后差异快照</tspan></text>
+
+  <g filter="url(#shadow)"><rect x="1204" y="230" width="136" height="146" rx="18" fill="#fff7ed" stroke="#fdba74"/></g>
+  <circle cx="1230" cy="256" r="14" fill="#c2410c"/><text x="1230" y="261" text-anchor="middle" class="n">6</text>
+  <text x="1224" y="294" class="cardTitle">结构化结果</text>
+  <text x="1224" y="322" class="mono"><tspan x="1224">ok</tspan><tspan x="1224" dy="19">rejected</tspan><tspan x="1224" dy="19">error / partial</tspan></text>
+
+  <!-- arrows -->
+  <path d="M254 303 H278" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M488 303 H512" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M704 303 H728" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M926 303 H950" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M1172 303 H1196" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- result routing -->
+  <path d="M1272 376 V430 H832 V386" stroke="#2563eb" stroke-width="2.2" fill="none" marker-end="url(#arrowBlue)"/>
+  <rect x="967" y="412" width="176" height="28" rx="14" fill="#dbeafe"/><text x="1055" y="431" text-anchor="middle" class="chip" fill="#1d4ed8">可恢复：结果回到下一轮</text>
+
+  <!-- audit lane -->
+  <rect x="76" y="468" width="1264" height="196" rx="20" fill="#0f172a"/>
+  <text x="104" y="506" class="kicker onDarkBlue">RUN ARTIFACTS / APPEND AS YOU GO</text>
+  <text x="104" y="541" class="onDark" font-size="20" font-weight="800">同一个 run_id 下持续落盘</text>
+
+  <rect x="104" y="565" width="256" height="66" rx="12" fill="#1e293b" stroke="#475569"/>
+  <text x="122" y="590" class="onDark" font-size="14" font-weight="800">task_state.json</text><text x="122" y="614" class="mono onDarkMuted">status · tool_steps · stop_reason</text>
+  <rect x="382" y="565" width="328" height="66" rx="12" fill="#1e293b" stroke="#475569"/>
+  <text x="400" y="590" class="onDark" font-size="14" font-weight="800">trace.jsonl</text><text x="400" y="614" class="mono onDarkMuted">run_started … tool_executed … run_finished</text>
+  <rect x="732" y="565" width="250" height="66" rx="12" fill="#1e293b" stroke="#475569"/>
+  <text x="750" y="590" class="onDark" font-size="14" font-weight="800">checkpoint</text><text x="750" y="614" class="mono onDarkMuted">after every tool execution</text>
+  <rect x="1004" y="565" width="304" height="66" rx="12" fill="#1e293b" stroke="#475569"/>
+  <text x="1022" y="590" class="onDark" font-size="14" font-weight="800">report.json</text><text x="1022" y="614" class="mono onDarkMuted">final state · approval · metrics</text>
+
+  <text x="104" y="690" class="small">终止型条件：final_answer_returned / step_limit_reached / retry_limit_reached / 不可恢复异常</text>
+</svg>
